@@ -7,7 +7,9 @@ from gymnasium import spaces
 # FIRST GOAL get robot arm to go to detected location from camera, then can enhance to move object to a locaiton after picking it up and other more complicated tasks
 
 class CustomEnv(gym.Env): 
-    def __init__(self):
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
+    
+    def __init__(self, render_mode=None):
         """
         Must define self.observation_space ad self.action_space here
         """
@@ -246,7 +248,25 @@ class CustomEnv(gym.Env):
                 
         self.action_space = spaces.Discrete(136)
         
+        assert render_mode is None or render_mode in self.metadata["render_modes"]
+        self.render_mode = render_mode
+
+        """
+        If human-rendering is used, `self.window` will be a reference
+        to the window that we draw to. `self.clock` will be a clock that is used
+        to ensure that the environment is rendered at the correct framerate in
+        human-mode. They will remain `None` until human-mode is used for the
+        first time.
+        """
+        self.window = None
+        self.clock = None
         
+    def _get_obs(self):
+        return {"agent": self._agent_location, "target": self._target_location}
+    
+    def _get_info(self):
+        return {"distance": np.linalg.norm(self._agent_location - self._target_location)}
+    
         
     def reset(self):
         """
