@@ -5,6 +5,9 @@ import gymnasium as gym
 from gymnasium import spaces
 import math
 
+import plotly.express as px
+import plotly.graph_objects as go
+
 # FIRST GOAL get robot arm to go to detected location from camera, then can enhance to move object to a locaiton after picking it up and other more complicated tasks
 
 class CustomEnv(gym.Env): 
@@ -523,6 +526,7 @@ class CustomEnv(gym.Env):
         move = self._actions_dict[action]
         
         self._agent_position += move
+        
         # Avoid out of bounds by truncating to upper/lower limit
         if self._agent_position[0] < self.agent_x_low:
             self._agent_position[0] = self.agent_x_low
@@ -576,6 +580,9 @@ class CustomEnv(gym.Env):
             self._agent_position[10] = self.agent_joint5_high
         
         
+        # IMPORTANT: I NEED to account that moving joints will also move the robot's xyz
+
+        
         # maybe here, if action is within a certain range, perform the needed robot command
         # ex: 0 < action < 78 would be passing the first 6 values in self._agent_position to the code to perform a linear motion command for robot
         # > 78 would be joint motion code to perform  
@@ -584,7 +591,7 @@ class CustomEnv(gym.Env):
         # CHANGE LATER: account if chosen movement resulted in robot error getting stuck, going out of bounds, colliding, speed too fast? etc
         z_offset = 50 # offset z bc the z of the agent should be more than the target since agent's z is not at tip of gripper
         terminated = np.array_equal(self._agent_position[0:3] , self._target_position + [0,0,z_offset])  
-        reward = 1 if terminated else 0  # Binary sparse rewards (FOR NOW, CHANGE LATER)
+        reward = 1 if terminated else 0  # Binary sparse rewards (FOR NOW, CHANGE LATER and make a CUSTOM REWARD SYSTEM)
         observation = self._get_obs()
         info = self._get_info()
 
@@ -592,3 +599,38 @@ class CustomEnv(gym.Env):
             self._render_frame()
 
         return observation, reward, terminated, False, info # WHAT does the False represent
+    
+    
+    # pybullet?
+    # gymnasium-robotics??
+    def render(self):
+        fig = go.Figure(data=[
+            go.Scatter3d(
+                x=self._agent_position[0], y=self._agent_position[1], z=self._agent_position[2],
+                mode='markers',
+                text="AGENT", #label coordinate point
+                name="Agent Coordinate",
+                marker = dict(
+                    size=6,
+                    opacity=.5,
+                    colorscale=px.colors.sequential.Bluyl)
+            ),
+            go.Scatter3d(
+                x=self._target_position[0], y=self._target_position[1], z=self._target_position[2],
+                mode='markers', 
+                text="TARGET",
+                name="Target Coordinate",
+                marker = dict(
+                    size=6,
+                    opacity=.5,
+                    colorscale=px.colors.sequential.Hot)
+            )     
+        ])
+        
+        fig.update_layout(scene = dict(
+                        xaxis_title='x',
+                        yaxis_title='y',
+                        zaxis_title='z'),
+                        )
+        
+        fig.show()
