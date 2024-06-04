@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 
 # FIRST GOAL get robot arm to go to detected location from camera, then can enhance to move object to a locaiton after picking it up and other more complicated tasks
 
-class CustomEnv(gym.Env): 
+class xArmEnv(gym.Env): 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
     
     def __init__(self, render_mode=None):
@@ -62,11 +62,11 @@ class CustomEnv(gym.Env):
         self.observation_space = spaces.Dict( # later may have to account for observing if other arms are moving???
             {
                 "agent" : spaces.Box(low=np.array([self.agent_x_low, self.agent_y_low, self.agent_z_low, self.agent_roll_pitch_yaw_low, self.agent_roll_pitch_yaw_low, self.agent_roll_pitch_yaw_low, self.agent_joint1_low, self.agent_joint2_low, self.agent_joint3_low, self.agent_joint4_low, self.agent_joint5_low]), 
-                high=np.array([self.agent_x_high, self.agent_y_high, self.agent_z_high, self.agent_roll_pitch_yaw_high, self.agent_roll_pitch_yaw_high, self.agent_joint1_high, self.agent_joint2_high, self.agent_joint3_high, self.agent_joint4_high, self.agent_joint5_high]), 
+                high=np.array([self.agent_x_high, self.agent_y_high, self.agent_z_high, self.agent_roll_pitch_yaw_high, self.agent_roll_pitch_yaw_high, self.agent_roll_pitch_yaw_high,self.agent_joint1_high, self.agent_joint2_high, self.agent_joint3_high, self.agent_joint4_high, self.agent_joint5_high]), 
                                      shape=(11,), dtype=np.float32), 
                 # the z axis is needed for the target to help guide the agent's z position to the target's -> But PROBLEM here bc z pos is the attachment point of the gripper, not the tip of the gripper
                 "target" : spaces.Box(low=np.array([self.target_x_low, self.target_y_low, self.target_z_low]), 
-                                      high=np.array([self.target_x_low, self.target_y_high, self.target_z_high]), 
+                                      high=np.array([self.target_x_high, self.target_y_high, self.target_z_high]), 
                                       shape=(3,), dtype=np.float32),
             }
         )
@@ -580,7 +580,8 @@ class CustomEnv(gym.Env):
             self._agent_position[10] = self.agent_joint5_high
         
         
-        # IMPORTANT: I NEED to account that moving joints will also move the robot's xyz
+        # IMPORTANT: I NEED to account that moving joints will also move the robot's xyz 
+        # -> set_servo_angle() is called for the joint motion command, maybe afterward, call get_position() ? -> xArm python SDK
 
         
         # maybe here, if action is within a certain range, perform the needed robot command
@@ -603,6 +604,7 @@ class CustomEnv(gym.Env):
     
     # pybullet?
     # gymnasium-robotics??
+    # IDEALLY have 3d simulation of our robot, conveyor belt and object
     def render(self):
         fig = go.Figure(data=[
             go.Scatter3d(
