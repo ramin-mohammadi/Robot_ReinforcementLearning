@@ -519,11 +519,62 @@ class CustomEnv(gym.Env):
         """
         Returns: Given current obs and action, returns the next observation, the reward, done and optionally additional info
         """
-        direction = self._actions_dict[action]
-        # We use `np.clip` to make sure we don't leave the grid
-        self._agent_position = np.clip(
-            self._agent_position + direction, 0, self.size - 1
-        )
+        # get move array based on action index
+        move = self._actions_dict[action]
+        
+        self._agent_position += move
+        # Avoid out of bounds by truncating to upper/lower limit
+        if self._agent_position[0] < self.agent_x_low:
+            self._agent_position[0] = self.agent_x_low
+        elif self._agent_position[0] > self.agent_x_high:
+            self._agent_position[0] = self.agent_x_high
+        elif self._agent_position[1] < self.agent_y_low:
+            self._agent_position[1] = self.agent_y_low
+        elif self._agent_position[1] > self.agent_y_high:
+            self._agent_position[1] = self.agent_y_high
+        elif self._agent_position[2] < self.agent_z_low:
+            self._agent_position[2] = self.agent_z_low
+        elif self._agent_position[2] > self.agent_z_high:
+            self._agent_position[2] = self.agent_z_high
+            
+        elif self._agent_position[3] < self.agent_roll_pitch_yaw_low:
+            self._agent_position[3] = self.agent_roll_pitch_yaw_low
+        elif self._agent_position[3] > self.agent_roll_pitch_yaw_high:
+            self._agent_position[3] = self.agent_roll_pitch_yaw_high
+        elif self._agent_position[4] < self.agent_roll_pitch_yaw_low:
+            self._agent_position[4] = self.agent_roll_pitch_yaw_low
+        elif self._agent_position[4] > self.agent_roll_pitch_yaw_high:
+            self._agent_position[4] = self.agent_roll_pitch_yaw_high
+        elif self._agent_position[5] < self.agent_roll_pitch_yaw_low:
+            self._agent_position[5] = self.agent_roll_pitch_yaw_low
+        elif self._agent_position[5] > self.agent_roll_pitch_yaw_high:
+            self._agent_position[5] = self.agent_roll_pitch_yaw_high
+            
+        elif self._agent_position[6] < self.agent_joint1_low:
+            self._agent_position[6] = self.agent_joint1_low
+        elif self._agent_position[6] > self.agent_joint1_high:
+            self._agent_position[6] = self.agent_joint1_high
+            
+        elif self._agent_position[7] < self.agent_joint2_low:
+            self._agent_position[7] = self.agent_joint2_low
+        elif self._agent_position[7] > self.agent_joint2_high:
+            self._agent_position[7] = self.agent_joint2_high
+            
+        elif self._agent_position[8] < self.agent_joint3_low:
+            self._agent_position[8] = self.agent_joint3_low
+        elif self._agent_position[8] > self.agent_joint3_high:
+            self._agent_position[8] = self.agent_joint3_high
+            
+        elif self._agent_position[9] < self.agent_joint4_low:
+            self._agent_position[9] = self.agent_joint4_low
+        elif self._agent_position[9] > self.agent_joint4_high:
+            self._agent_position[9] = self.agent_joint4_high
+            
+        elif self._agent_position[10] < self.agent_joint5_low:
+            self._agent_position[10] = self.agent_joint5_low
+        elif self._agent_position[10] > self.agent_joint5_high:
+            self._agent_position[10] = self.agent_joint5_high
+        
         
         # maybe here, if action is within a certain range, perform the needed robot command
         # ex: 0 < action < 78 would be passing the first 6 values in self._agent_position to the code to perform a linear motion command for robot
@@ -531,7 +582,8 @@ class CustomEnv(gym.Env):
         
         # An episode is done iff the agent has reached the target
         # CHANGE LATER: account if chosen movement resulted in robot error getting stuck, going out of bounds, colliding, speed too fast? etc
-        terminated = np.array_equal(self._agent_position[0:3], self._target_position)
+        z_offset = 50 # offset z bc the z of the agent should be more than the target since agent's z is not at tip of gripper
+        terminated = np.array_equal(self._agent_position[0:3] , self._target_position + [0,0,z_offset])  
         reward = 1 if terminated else 0  # Binary sparse rewards (FOR NOW, CHANGE LATER)
         observation = self._get_obs()
         info = self._get_info()
