@@ -1,6 +1,6 @@
 from setuptools import setup
 
-# in anaconda prompt, activate the deep_robot env, cd into C:\RaminMohammadi_REU2024\env_package, then run : pip install -e .
+# in anaconda prompt, activate the deep_robot env, cd into C:\RaminMohammadi_REU2024\env_package, then run : pip install -e . -> everytime env changed/updated
 
 setup(
     name="FactoryRobotArm",
