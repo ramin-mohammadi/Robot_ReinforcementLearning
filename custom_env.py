@@ -519,3 +519,24 @@ class CustomEnv(gym.Env):
         """
         Returns: Given current obs and action, returns the next observation, the reward, done and optionally additional info
         """
+        direction = self._actions_dict[action]
+        # We use `np.clip` to make sure we don't leave the grid
+        self._agent_position = np.clip(
+            self._agent_position + direction, 0, self.size - 1
+        )
+        
+        # maybe here, if action is within a certain range, perform the needed robot command
+        # ex: 0 < action < 78 would be passing the first 6 values in self._agent_position to the code to perform a linear motion command for robot
+        # > 78 would be joint motion code to perform  
+        
+        # An episode is done iff the agent has reached the target
+        # CHANGE LATER: account if chosen movement resulted in robot error getting stuck, going out of bounds, colliding, speed too fast? etc
+        terminated = np.array_equal(self._agent_position[0:3], self._target_position)
+        reward = 1 if terminated else 0  # Binary sparse rewards (FOR NOW, CHANGE LATER)
+        observation = self._get_obs()
+        info = self._get_info()
+
+        if self.render_mode == "human":
+            self._render_frame()
+
+        return observation, reward, terminated, False, info # WHAT does the False represent
