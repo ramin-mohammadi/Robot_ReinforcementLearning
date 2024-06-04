@@ -3,6 +3,7 @@
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
+import math
 
 # FIRST GOAL get robot arm to go to detected location from camera, then can enhance to move object to a locaiton after picking it up and other more complicated tasks
 
@@ -19,33 +20,36 @@ class CustomEnv(gym.Env):
         
         # THERE ARE DIFFERENT BOUNDARY VALUES for the smaller and bigger arms (LOOK at their manuals appendix which are the last few pages)
         
-        # xArm 5 (big arm)
-        self.x_low = -700
-        self.x_high = 700
-        self.y_low = -700
-        self.y_high = 700
-        self.z_low = 0
-        self.z_high = 950
+        # AGENT: xArm 5 (big arm)
+        self.agent_x_low = -700
+        self.agent_x_high = 700
+        self.agent_y_low = -700
+        self.agent_y_high = 700
+        self.agent_z_low = 0
+        self.agent_z_high = 950
         
-        self.roll_pitch_yaw_low = -180
-        self.roll_pitch_yaw_high = 180
+        self.agent_roll_pitch_yaw_low = -180
+        self.agent_roll_pitch_yaw_high = 180
         
-        self.joint1_low = -360
-        self.joint1_high = 360
-        self.joint2_low = -118
-        self.joint2_high = 120
-        self.joint3_low = -225
-        self.joint3_high = 11
-        self.joint4_low = -97
-        self.joint4_high = 180
-        self.joint5_low = -360
-        self.joint5_high = 360
+        self.agent_joint1_low = -360
+        self.agent_joint1_high = 360
+        self.agent_joint2_low = -118
+        self.agent_joint2_high = 120
+        self.agent_joint3_low = -225
+        self.agent_joint3_high = 11
+        self.agent_joint4_low = -97
+        self.agent_joint4_high = 180
+        self.agent_joint5_low = -360
+        self.agent_joint5_high = 360
         
-        # object on conveyor belt
+        # TARGET: object on conveyor belt
         self.target_x_low = -300
         self.target_x_high = 300
         self.target_y_low = -400
         self.target_y_high = 400
+        
+        self.target_z_low = 0
+        self.target_z_high = 30
 
         
         # robot arm is the agent, target is the object on the conveyor belt
@@ -54,12 +58,13 @@ class CustomEnv(gym.Env):
         # target will just have [x,y,z]
         self.observation_space = spaces.Dict( # later may have to account for observing if other arms are moving???
             {
-                "agent" : spaces.Box(low=np.array([self.x_low, self.y_low, self.z_low, self.roll_pitch_yaw_low, self.roll_pitch_yaw_low, self.roll_pitch_yaw_low, self.joint1_low, self.joint2_low, self.joint3_low, self.joint4_low, self.joint5_low]), 
-                high=np.array([self.x_high, self.y_high, self.z_high, self.roll_pitch_yaw_high, self.roll_pitch_yaw_high, self.joint1_high, self.joint2_high, self.joint3_high, self.joint4_high, self.joint5_high]), 
-                                     shape=(11,), dtype=np.float32), # independent bound for each dimension
-                # the z axis may be useless for the object 
-                "target" : spaces.Box(low=np.array([self.target_x_low, self.target_y_low]), high=np.array([self.target_x_low, self.target_y_high]), 
-                                      shape=(2,), dtype=np.float32),
+                "agent" : spaces.Box(low=np.array([self.agent_x_low, self.agent_y_low, self.agent_z_low, self.agent_roll_pitch_yaw_low, self.agent_roll_pitch_yaw_low, self.agent_roll_pitch_yaw_low, self.agent_joint1_low, self.agent_joint2_low, self.agent_joint3_low, self.agent_joint4_low, self.agent_joint5_low]), 
+                high=np.array([self.agent_x_high, self.agent_y_high, self.agent_z_high, self.agent_roll_pitch_yaw_high, self.agent_roll_pitch_yaw_high, self.agent_joint1_high, self.agent_joint2_high, self.agent_joint3_high, self.agent_joint4_high, self.agent_joint5_high]), 
+                                     shape=(11,), dtype=np.float32), 
+                # the z axis is needed for the target to help guide the agent's z position to the target's -> But PROBLEM here bc z pos is the attachment point of the gripper, not the tip of the gripper
+                "target" : spaces.Box(low=np.array([self.target_x_low, self.target_y_low, self.target_z_low]), 
+                                      high=np.array([self.target_x_low, self.target_y_high, self.target_z_high]), 
+                                      shape=(3,), dtype=np.float32),
             }
         )
         
@@ -86,37 +91,42 @@ class CustomEnv(gym.Env):
         - rotate counter clockwise joint4
         - rotate counter clockwise joint5 
         
+        ADD LATER:
+        - open gripper
+        - close gripper
+        - sleep?
+        
         PROBLEM: determining how many units to move by (dijkstras? shortest path?) -> MAYBE just provide multiple 
         intervals it could possibly be moved at a time so 1,5,10,20,50,100mm
         then for degrees 1, 5, 10, 20, 60, 90, 180
         """
-        MOVE_RIGHT_1 = 0
-        MOVE_RIGHT_5 = 1
-        MOVE_RIGHT_10 = 2
-        MOVE_RIGHT_20 = 3
-        MOVE_RIGHT_50 = 4
-        MOVE_RIGHT_100 = 5
+        MOVE_X_POS_1 = 0
+        MOVE_X_POS_5 = 1
+        MOVE_X_POS_10 = 2
+        MOVE_X_POS_20 = 3
+        MOVE_X_POS_50 = 4
+        MOVE_X_POS_100 = 5
 
-        MOVE_LEFT_1 = 6
-        MOVE_LEFT_5 = 7
-        MOVE_LEFT_10 = 8
-        MOVE_LEFT_20 = 9
-        MOVE_LEFT_50 = 10
-        MOVE_LEFT_100 = 11
+        MOVE_X_NEG_1 = 6
+        MOVE_X_NEG_5 = 7
+        MOVE_X_NEG_10 = 8
+        MOVE_X_NEG_20 = 9
+        MOVE_X_NEG_50 = 10
+        MOVE_X_NEG_100 = 11
         
-        MOVE_DOWN_1 = 12
-        MOVE_DOWN_5 = 13
-        MOVE_DOWN_10 = 14
-        MOVE_DOWN_20 = 15
-        MOVE_DOWN_50 = 16
-        MOVE_DOWN_100 = 17
+        MOVE_Y_POS_1 = 12
+        MOVE_Y_POS_5 = 13
+        MOVE_Y_POS_10 = 14
+        MOVE_Y_POS_20 = 15
+        MOVE_Y_POS_50 = 16
+        MOVE_Y_POS_100 = 17
 
-        MOVE_UP_1 = 18
-        MOVE_UP_5 = 19
-        MOVE_UP_10 = 20
-        MOVE_UP_20 = 21
-        MOVE_UP_50 = 22
-        MOVE_UP_100 = 23
+        MOVE_Y_NEG_1 = 18
+        MOVE_Y_NEG_5 = 19
+        MOVE_Y_NEG_10 = 20
+        MOVE_Y_NEG_20 = 21
+        MOVE_Y_NEG_50 = 22
+        MOVE_Y_NEG_100 = 23
 
         ROTATE_CLOCKWISE_ROLL_1 = 24
         ROTATE_CLOCKWISE_ROLL_5 = 25
@@ -245,8 +255,29 @@ class CustomEnv(gym.Env):
         ROTATE_COUNTERCLOCKWISE_J5_60 = 133
         ROTATE_COUNTERCLOCKWISE_J5_90 = 134
         ROTATE_COUNTERCLOCKWISE_J5_180 = 135
+        
+        MOVE_Z_POS_1 = 136
+        MOVE_Z_POS_5 = 137
+        MOVE_Z_POS_10 = 138
+        MOVE_Z_POS_20 = 139
+        MOVE_Z_POS_50 = 140
+        MOVE_Z_POS_100 = 141
+
+        MOVE_Z_NEG_1 = 142
+        MOVE_Z_NEG_5 = 143
+        MOVE_Z_NEG_10 = 144
+        MOVE_Z_NEG_20 = 145
+        MOVE_Z_NEG_50 = 146
+        MOVE_Z_NEG_100 = 147
+        
+        MOVE_X_POS_DEC_1 = 148 # move x+ direction by 0.1 mm
+        MOVE_X_NEG_DEC_1 = 149
+        MOVE_Y_POS_DEC_1 = 150
+        MOVE_Y_NEG_DEC_1 = 151
+        MOVE_Z_POS_DEC_1 = 152
+        MOVE_Z_NEG_DEC_1 = 153
                 
-        self.action_space = spaces.Discrete(136)
+        self.action_space = spaces.Discrete(154)
         
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -261,17 +292,45 @@ class CustomEnv(gym.Env):
         self.window = None
         self.clock = None
         
-    def _get_obs(self):
-        return {"agent": self._agent_location, "target": self._target_location}
-    
-    def _get_info(self):
-        return {"distance": np.linalg.norm(self._agent_location - self._target_location)}
-    
         
-    def reset(self):
+    def _get_obs(self):
+        return {"agent": self._agent_position, "target": self._target_position}
+    
+    # distance between 2 points in 3D space (agent's and target's xyz positions)
+    def _get_info(self):
+        # return {"distance": np.linalg.norm(self._agent_position[0:3] - self._target_position)}
+        return {"distance": math.sqrt(math.pow(self._agent_position[0] - self._target_position[0], 2) + math.pow(self._agent_position[1] - self._target_position[1], 2) + math.pow(self._agent_position[2] - self._target_position[2], 2)* 1.0)}
+    
+    def get_random_target_pos(self):
+        return np.array([self.np_random.integers(low=self.target_x_low, high=self.target_x_high), self.np_random.integers(low=self.target_y_low, high=self.target_y_high), self.np_random.integers(low=self.target_z_low, high=self.target_z_high) ])
+        
+    
+    """
+    Agent's initial position , joints and rotation of the robot must be static -> not random values (for now assume initial position, would be better to start from zero position but cant do that bc not enough space for robot to go back to zero position).
+    
+    Target's position will be random 
+    """
+    def reset(self, seed=None):
         """
         Returns the observation of the initial state
-        Reset tge ebvuronment to initial state so that a new episode (independent of previous ones) may start
-        ""
+        Reset the environment to initial state so that a new episode (independent of previous ones) may start
+        """
+        super().reset(seed=seed)
+        
+        # Agent's initial values will be static based off of values at initial position set on the arm
+        self._agent_position = np.array([-12.1,181.6,222.3, 180,0,-91.5, 93.8,-58.8,5.2,53.6,185.3]) # [x,y,z, roll,pitch,yaw, J1,J2,J3,J4,J5]
+
+        self._target_position = self.get_random_target_pos()
+        # We will sample the target's location randomly until it does not coincide with the agent's location
+        while np.array_equal(self._target_position, self._agent_position[0:3]):
+            self._target_position = self.get_random_target_pos()
+
+        observation = self._get_obs()
+        info = self._get_info()
+
+        if self.render_mode == "human":
+            self._render_frame()
+
+        return observation, info
         
         
