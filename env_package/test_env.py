@@ -18,7 +18,7 @@ env = gymnasium.make('FactoryRobotArm/xArm-v0')
 #     env.render()
 
 model = DQN("MultiInputPolicy", env, verbose=1)
-model.learn(total_timesteps=20000, log_interval=4)
+model.learn(total_timesteps=40000, log_interval=4)
 
 
 obs, info = env.reset()
@@ -29,6 +29,15 @@ while True:
     # if type(action) == np.ndarray:
     #     action = action[np.argmax(action)] 
     obs, reward, terminated, truncated, info = env.step(action)
+    
+    if(info['distance'] == 0):
+        print("DONEEEEEE")
+        
 
     if terminated or truncated:
+        # print("DONEEE")
+        # break
         obs, info = env.reset()
+        
+        
+# IMPORTANT: model cant reach the target bc there are so many different actions to choose from so will take FOREVER
