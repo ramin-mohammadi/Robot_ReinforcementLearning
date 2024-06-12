@@ -230,6 +230,7 @@ class RobotMain(object):
 #     arm = XArmAPI('192.168.1.207', baud_checkset=False)
 #     robot_main = RobotMain(arm)
 #     robot_main.run()
+
     def test(self, target_pos):
         try:
             self._tcp_speed = 71
@@ -244,6 +245,54 @@ class RobotMain(object):
             if not self._check_code(code, 'set_position'):
                 return
 
+        except Exception as e:
+            self.pprint('MainException: {}'.format(e))
+            
+    def move_to(self, pos):
+        try:
+            self._tcp_speed = 71
+            self._tcp_acc = 1000
+            self._angle_speed = 30
+            self._angle_acc = 200
+            code = self._arm.set_tcp_load(0.82, [0, 0, 48])
+            if not self._check_code(code, 'set_tcp_load'):
+                return
+            
+            code = self._arm.set_position(*[pos[0], pos[1], pos[2], 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            if not self._check_code(code, 'set_position'):
+                return
+            
+            code = self._arm.set_pause_time(1)
+            if not self._check_code(code, 'set_pause_time'):
+                return
+
+        except Exception as e:
+            self.pprint('MainException: {}'.format(e))
+            # self.move_initial()
+            
+    def open_gripper(self):
+        try:
+            code = self._arm.set_gripper_position(450, wait=True, speed=2500, auto_enable=True)
+            if not self._check_code(code, 'set_gripper_position'):
+                return
+        
+            code = self._arm.set_pause_time(1)
+            if not self._check_code(code, 'set_pause_time'):
+                return
+        
+        except Exception as e:
+            self.pprint('MainException: {}'.format(e))
+            
+    def close_gripper(self):
+        try:
+            code = self._arm.set_gripper_position(297, wait=True, speed=2500, auto_enable=True)
+            if not self._check_code(code, 'set_gripper_position'):
+                return
+            
+            code = self._arm.set_pause_time(1)
+            if not self._check_code(code, 'set_pause_time'):
+                return
+        
         except Exception as e:
             self.pprint('MainException: {}'.format(e))
             

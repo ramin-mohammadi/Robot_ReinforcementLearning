@@ -19,29 +19,30 @@ env = gymnasium.make('FactoryRobotArm/xArm-v0')
 #     env.render()
 
 model = DQN("MultiInputPolicy", env, verbose=1)
-model.learn(total_timesteps=40000, log_interval=4)
+model.learn(total_timesteps=300, log_interval=1)
 
 
 obs, info = env.reset()
 while True:
     action, _states = model.predict(obs, deterministic=True)
-    print(action)
+    # print(action)
     action = int(action) # action was ndarray but could not correctly index into my action dictionary
     # if type(action) == np.ndarray:
     #     action = action[np.argmax(action)] 
     obs, reward, terminated, truncated, info = env.step(action)
     
-    print("Distance: ", info['distance'])
-    print("Agent Pos: ", info['agent_pos'])
-    print("Target_Pos: ", info['target_pos'])
+    # print("Distance: ", info['distance'])
+    # print("Agent Pos: ", info['agent_pos'])
+    # print("Target_Pos: ", info['target_pos'])
     
-    if(info['distance'] == 0):
-        print("DONEEEEEE")
-        print("Number of steps: ", info['num_steps'])
-        time.sleep(3)
+    # if(info['distance'] == 0):
+    #     print("DONEEEEEE")
+    #     print("Number of steps: ", info['num_steps'])
+    #     time.sleep(3)
 
     if terminated or truncated:
-        # print("DONEEE")
+        print("Reached destination")
+        time.sleep(2)
         # break
         obs, info = env.reset()
         
