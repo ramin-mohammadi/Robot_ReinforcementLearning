@@ -65,7 +65,7 @@ class xArmEnv(gym.Env):
         self.target_y_low = -400
         self.target_y_high = 400        
         self.target_z_low = 0
-        self.target_z_high = 30
+        self.target_z_high = 400
         
         # SIMPLE EXAMPLE:
         # self.target_x_low = -3
@@ -91,11 +91,11 @@ class xArmEnv(gym.Env):
             {
                 "agent" : spaces.Box(low=np.array([self.agent_x_low, self.agent_y_low, self.agent_z_low, self.agent_roll_pitch_yaw_low, self.agent_roll_pitch_yaw_low, self.agent_roll_pitch_yaw_low, self.agent_joint1_low, self.agent_joint2_low, self.agent_joint3_low, self.agent_joint4_low, self.agent_joint5_low]), 
                 high=np.array([self.agent_x_high, self.agent_y_high, self.agent_z_high, self.agent_roll_pitch_yaw_high, self.agent_roll_pitch_yaw_high, self.agent_roll_pitch_yaw_high,self.agent_joint1_high, self.agent_joint2_high, self.agent_joint3_high, self.agent_joint4_high, self.agent_joint5_high]), 
-                                        shape=(11,), dtype=np.float32), 
+                                        shape=(11,), dtype=np.float64), 
                 # the z axis is needed for the target to help guide the agent's z position to the target's -> But PROBLEM here bc z pos is the attachment point of the gripper, not the tip of the gripper -> assume z is static (figure out beforehand)
                 "target" : spaces.Box(low=np.array([self.target_x_low, self.target_y_low, self.target_z_low]), 
                                         high=np.array([self.target_x_high, self.target_y_high, self.target_z_high]), 
-                                        shape=(3,), dtype=np.float32),
+                                        shape=(3,), dtype=np.float64),
                 "gripper_state": spaces.Discrete(2), # {0,1}  , 1 if open 0 if closed
                 "historical_actions": spaces.Box(low=-1, high=3, shape=(5,), dtype=int)  # 5 most recent actions (t-5, t-4, t-3, t-2, t-1)
             }
@@ -136,35 +136,6 @@ class xArmEnv(gym.Env):
         """
         self.window = None
         self.clock = None
-        
-        
-    def _get_obs(self):
-        # return {"agent": self._agent_position, "target": self._target_position}
-        # return self.observation_space
-        return {"agent": self._agent_position, "target": self._target_position, "gripper_state": self.gripper_state, "historical_actions": self.historical_actions}
-    
-    # distance between 2 points in 3D space (agent's and target's xyz positions)
-    def _get_info(self):
-        # return {"distance": np.linalg.norm(self._agent_position[0:3] - self._target_position)}
-        return {"distance_a_t": math.sqrt(math.pow(self._agent_position[0] - self._target_position[0], 2) + math.pow(self._agent_position[1] - self._target_position[1], 2) + math.pow(self._agent_position[2] - self._target_position[2], 2)* 1.0),
-        "distance_t_d": math.sqrt(math.pow(self._destination_position[0] - self._target_position[0], 2) + math.pow(self._destination_position[1] - self._target_position[1], 2) + math.pow(self._destination_position[2] - self._target_position[2], 2)* 1.0),
-                "num_steps": self.num_steps,
-                "agent_pos": self._agent_position,
-                "target_pos": self._target_position}
-    
-    def _get_x_displacement(self):
-        return -(self._agent_position[0] - self._target_position[0]) # take negative because want agent to move in the direction of the displacement
-    def _get_y_displacement(self):
-        return -(self._agent_position[1] - self._target_position[1])
-    def _get_z_displacement(self):
-        return -(self._agent_position[2] - self._target_position[2])
-    
-    def get_random_target_pos(self):
-        return np.array([self.np_random.integers(low=self.target_x_low, high=self.target_x_high), self.np_random.integers(low=self.target_y_low, high=self.target_y_high), self.np_random.integers(low=self.target_z_low, high=self.target_z_high) ])
-    
-    def update_agent_position(self):
-        self._agent_position[0:6] = self.robot_main._arm.get_position()[1] # [x,y,z,roll,pitch,yaw]
-        self._agent_position[6:11] = self.robot_main._arm.get_servo_angle()[1][0:5] # 5 joint angles
         
     
     """
@@ -284,6 +255,8 @@ class xArmEnv(gym.Env):
             
             
         print("Action: ", action)
+        print("Last Action: ", self.state_last_action)
+
         
         # update agent position by getting robot's current coordinates after move
         # self.update_agent_position()
@@ -448,39 +421,25 @@ class xArmEnv(gym.Env):
         print("Reward: ", reward)
         
         
-        self.prev_agent_target_distance = info["distance_a_t"]
-        self.prev_target_dest_distance = info["distance_t_d"]
+        
+        # self.prev_agent_target_distance = info["distance_a_t"]
+        # self.prev_target_dest_distance = info["distance_t_d"]
         
         
         
-        # if terminated:
-        #     reward = 10
-        # # elif info["distance"] < self._agent_position[3]: # give reward if the move chosen made the agent closer to target than previously
-        # #     reward = 0  
-
-        # else: reward = 0     
-        # # store euclidean distance in index 3
-        # # self._agent_position[3] = info["distance"]
         
-        # if reward > 1:
-        #     print("AGENT REACHED TARGET!!!")
-        #     # exit()
         
         
         self.state_last_action = action
         
         
-        # update history of 5 most recent actions
-        temp = -1
-        for i in reversed(range(5)):
-            if i == 5: # most recent action
-                self.historical_actions[i] = action
-            else:
-                self.historical_actions[i] = temp            
-            temp = self.historical_actions[i]
+        self.update_historical_actions(action)
+          
 
+        print("New Historical Actions: ", self.historical_actions)
         
         observation = self._get_obs()
+        print("Observations:", observation, "\n")
 
         if self.render_mode == "human":
             self._render_frame()
@@ -529,3 +488,47 @@ class xArmEnv(gym.Env):
                         )
         
         fig.show()
+        
+    def _get_obs(self):
+        # return {"agent": self._agent_position, "target": self._target_position}
+        # return self.observation_space
+        return {"agent": np.round(self._agent_position, decimals=1) , "target": np.round(self._target_position, decimals=1), "gripper_state": self.gripper_state, "historical_actions": self.historical_actions}
+    
+    # distance between 2 points in 3D space (agent's and target's xyz positions)
+    def _get_info(self):
+        # return {"distance": np.linalg.norm(self._agent_position[0:3] - self._target_position)}
+        return {"distance_a_t": math.sqrt(math.pow(self._agent_position[0] - self._target_position[0], 2) + math.pow(self._agent_position[1] - self._target_position[1], 2) + math.pow(self._agent_position[2] - self._target_position[2], 2)* 1.0),
+        "distance_t_d": math.sqrt(math.pow(self._destination_position[0] - self._target_position[0], 2) + math.pow(self._destination_position[1] - self._target_position[1], 2) + math.pow(self._destination_position[2] - self._target_position[2], 2)* 1.0),
+                "num_steps": self.num_steps,
+                "agent_pos": self._agent_position,
+                "target_pos": self._target_position}
+    
+    def _get_x_displacement(self):
+        return -(self._agent_position[0] - self._target_position[0]) # take negative because want agent to move in the direction of the displacement
+    def _get_y_displacement(self):
+        return -(self._agent_position[1] - self._target_position[1])
+    def _get_z_displacement(self):
+        return -(self._agent_position[2] - self._target_position[2])
+    
+    def get_random_target_pos(self):
+        return np.array([self.np_random.integers(low=self.target_x_low, high=self.target_x_high), self.np_random.integers(low=self.target_y_low, high=self.target_y_high), self.np_random.integers(low=self.target_z_low, high=self.target_z_high) ])
+    
+    def update_agent_position(self):
+        self._agent_position[0:6] = self.robot_main._arm.get_position()[1] # [x,y,z,roll,pitch,yaw]
+        self._agent_position[6:11] = self.robot_main._arm.get_servo_angle()[1][0:5] # 5 joint angles
+    
+    # update history of 5 most recent actions
+    def update_historical_actions(self, action: int):
+        # t = current time step
+        # self.historical_actions = [t-5, t-4, t-3, t-2, t-1]
+        temp_1 = -1
+        temp_2 = -1
+        for i in reversed(range(5)):                    
+            if i == 4: # most recent action            
+                temp_1 = self.historical_actions[i]
+                self.historical_actions[i] = action
+            else:
+                temp_2 = self.historical_actions[i]
+                self.historical_actions[i] = temp_1  
+                temp_1 = temp_2
+        
