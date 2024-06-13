@@ -240,12 +240,13 @@ class xArmEnv(gym.Env):
         self.num_steps += 1
         
         
-        
-        # if agent at target and robot closed gripper
-        if(np.array_equal(self._agent_position[0:3], self._target_position) and self.state_last_action == 2):
+        # THIS BRANCH is still BUGGY -> may say target reached the destination when the grippers were open when moving to the destination
+        # if agent at target and robot closed gripper, update target position with agent's position (robot is holding block)
+        if(np.array_equal(self._agent_position[0:3], self._target_position) and action == 2):
             self.state_robot_checkpoint = True
         # robot chose to open gripper while it was previously holding target
-        elif(np.array_equal(self._agent_position[0:3], self._target_position) and self.state_last_action == 3): 
+        # elif(np.array_equal(self._agent_position[0:3], self._target_position) and self.state_last_action == 3): 
+        if(action == 3): # anytime the gripper is opened assume not going to be updating target position anymore
             self.state_robot_checkpoint = False
         
 
@@ -297,7 +298,7 @@ class xArmEnv(gym.Env):
         print("AGENT: ", self._agent_position)
         
         
-        if(self.state_robot_checkpoint):
+        if(self.state_robot_checkpoint == True):
             self._target_position = self._agent_position[0:3]
             
         # self.observation_space["target"] = self._target_position
@@ -382,14 +383,24 @@ class xArmEnv(gym.Env):
         terminated = np.array_equal(self._target_position, self._destination_position)  
 
         
+        # END EPISODE if agent moves to the target with its gripper closed 
+        # if(action == 0 and self.gripper_state == 0 and terminated == False):
+        #     terminated = True
         
                 
         info = self._get_info()
         
-        # Reward System
+        # Reward System (think of it as trainging a dog with treats / no treats / punish for doing something 
+        # -> ALSO making sure agent is not convinving itself to do something that is not ideal)
+        # PROBLEM: model sometimes get stuck repeating an action even with punishment but at some point broke out of it
+        # PROBLEM: with my current dense reward system, model convinced itself that within an episode it can rack up more reward from constantly going back and forth to target position then at the end finally choose to pick up the block and move to destination to maximize reward
         if terminated:
-            reward = 10
+            reward = 100
             print("Target reached Destination!!!")
+        # penalize for choosing the same action back to back
+        elif (action == 0 and self.state_last_action == 0) or (action == 1 and self.state_last_action == 1) or (action == 2 and self.state_last_action == 2) or (action == 3 and self.state_last_action == 3): 
+            reward = -3
+   
         # elif info["distance_a_t"] < self.prev_agent_target_distance:
         #     # if self.prev_agent_target_distance != 99999999:
         #     #     # reward = np.abs(info["distance_a_t"] - self.prev_agent_target_distance)
@@ -401,15 +412,36 @@ class xArmEnv(gym.Env):
         #     #     reward = np.abs(info["distance_t_d"] - self.prev_target_dest_distance)
         #     # else: reward = 1
         #     reward = 1
+        
         # provide reward for closing gripper at target position
         elif np.array_equal(self._agent_position[0:3], self._target_position) and action == 2: 
             reward = 1
+            
+        # punish for opening gripper at target position when it use to be closed
+        elif np.array_equal(self._agent_position[0:3], self._target_position) and action == 3 and self.state_last_action == 2: 
+            reward = -1
+        # maybe punish for going to target with grippers closed (would lead to collision which we dont want)
+        elif np.array_equal(self._agent_position[0:3], self._target_position) and action == 0 and self.gripper_state == 0:
+            reward = -1
+            # END EPISODE if agent moves to the target with its gripper closed 
+            terminated = True
+            reward = -30
+        # provide reward for moving to target
+        elif np.array_equal(self._agent_position[0:3], self._target_position) and action == 0:
+            reward = 0.1
+            
+        
+        # provide reward for going to target with grippers open    
+        elif np.array_equal(self._agent_position[0:3], self._target_position) and action == 0 and self.gripper_state == 1: 
+            reward = 1
+        
+            
         # penalize for letting go of the block not at destination
         # elif np.array_equal(self._agent_position[0:3], self._target_position) and action == 3:
         #     reward = -1 
         # penalize for going to destination without target (block)
-        elif action == 1 and not np.array_equal(self._agent_position[0:3], self._target_position):
-            reward = -1
+        # elif action == 1 and not np.array_equal(self._agent_position[0:3], self._target_position):
+        #     reward = -1
         else:
             reward = 0
             

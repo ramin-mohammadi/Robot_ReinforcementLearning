@@ -18,9 +18,17 @@ env = gymnasium.make('FactoryRobotArm/xArm-v0')
 #     obs, rewards, dones, info = env.step(action)
 #     env.render()
 
-model = DQN("MultiInputPolicy", env, verbose=1)
-model.learn(total_timesteps=300, log_interval=1)
+# model = DQN("MultiInputPolicy", env, verbose=1)
+model = PPO("MultiInputPolicy", env, verbose=1)
 
+model.learn(total_timesteps=3000, log_interval=1)
+
+
+model.save("DQN_xArm")
+# del model # remove to demonstrate saving and loading
+ 
+exit()
+model = DQN.load("DQN_xArm")
 
 obs, info = env.reset()
 while True:
