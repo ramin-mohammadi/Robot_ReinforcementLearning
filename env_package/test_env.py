@@ -11,9 +11,9 @@ env = gymnasium.make('FactoryRobotArm/xArm-v0')
 
 
 
-
-model = DQN("MultiInputPolicy", env, verbose=1)
-# model = PPO("MultiInputPolicy", env, verbose=1, learning_rate=0.001, gamma=0.8)  
+# PPO seems to be doing a better job of reaching the destination than DQN
+# model = PPO("MultiInputPolicy", env, verbose=1)
+model = DQN("MultiInputPolicy", env, verbose=1, learning_rate=0.001, gamma=0.8)  
 # gamma is the discount factor (go for higher value bc with dense reward system, want model to go for big reward in future 
 # being putting the block at the destination rather repetititve quick rewards)
 

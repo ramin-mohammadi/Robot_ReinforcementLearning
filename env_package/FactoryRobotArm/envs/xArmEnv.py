@@ -97,6 +97,10 @@ class xArmEnv(gym.Env):
                                         high=np.array([self.target_x_high, self.target_y_high, self.target_z_high]), 
                                         shape=(3,), dtype=np.float64),
                 "gripper_state": spaces.Discrete(2), # {0,1}  , 1 if open 0 if closed
+                "grabbed_target": spaces.Discrete(2), # {0,1}  , 1 if picked up 0 otherwise/dropped block
+                "arm_reached_target": spaces.Discrete(2), # {0,1}  , 1 if arm reached target 0 otherwise
+                "target_reached_destination": spaces.Discrete(2), # {0,1}  , 1 if block reached destination 0 otherwise
+                "collision": spaces.Discrete(2), # {0,1}  , 1 if collision occurred 0 otherwise
                 "historical_actions": spaces.Box(low=-1, high=3, shape=(5,), dtype=int)  # 5 most recent actions (t-5, t-4, t-3, t-2, t-1)
             }
         )
@@ -172,7 +176,10 @@ class xArmEnv(gym.Env):
 
         self.state_last_action = -1
         # if agent at target and robot closed gripper
-        self.state_robot_checkpoint = False # if true, target position will be updated with agent's position
+        self.state_grabbed_target = 0 # if true (1), target position will be updated with agent's position
+        self.state_target_reached_destination = 0
+        self.state_arm_reached_target = 0
+        self.state_collision = 0 # 1 if collision occurred such as arm moving to block with grippers closed
         
         
         self.prev_agent_target_distance = 99999999
@@ -235,13 +242,13 @@ class xArmEnv(gym.Env):
         # THIS BRANCH is still BUGGY -> may say target reached the destination when the grippers were open when moving to the destination
         # if agent at target and robot closed gripper, update target position with agent's position (robot is holding block)
         if(np.array_equal(self._agent_position[0:3], self._target_position) and self.gripper_state == 0):
-            self.state_robot_checkpoint = True
+            self.state_grabbed_target = 1
         # robot chose to open gripper while it was previously holding target
         # elif(np.array_equal(self._agent_position[0:3], self._target_position) and self.state_last_action == 3): 
         if(self.gripper_state == 1): # anytime the gripper is opened assume not going to be updating target position anymore
-            self.state_robot_checkpoint = False
+            self.state_grabbed_target = 0
         
-        print("STATE CHECKPOINT: ", self.state_robot_checkpoint)
+        print("STATE CHECKPOINT: ", self.state_grabbed_target)
 
         
 
@@ -259,7 +266,7 @@ class xArmEnv(gym.Env):
         
         # print("TARGET: ", self._target_position)        
 
-        if self.state_robot_checkpoint == True and self.gripper_state == 0:
+        if self.state_grabbed_target == 1 and self.gripper_state == 0:
             # DO NOT DO BELOW cause target variable will now point to the agent pos address so when agent pos is updated, so is target:
             # self._target_position = self._agent_position[0:3] 
             self._target_position = np.round(self.robot_main._arm.get_position()[1][0:3], decimals=1)
@@ -342,6 +349,10 @@ class xArmEnv(gym.Env):
         # if(action == 0 and self.gripper_state == 0 and terminated == False):
         #     terminated = True
         
+        if np.array_equal(self._agent_position[0:3], self._target_position):
+            self.state_arm_reached_target = 1
+        else: self.state_arm_reached_target = 0
+        
                 
         info = self._get_info()
         
@@ -351,10 +362,10 @@ class xArmEnv(gym.Env):
         # PROBLEM: with my current dense reward system, model convinced itself that within an episode it can rack up more reward from constantly going back and forth to target position then at the end finally choose to pick up the block and move to destination to maximize reward
         if terminated:
             reward = 100
-            # reward = 1
+        #     # reward = 1
+            self.state_target_reached_destination = 1
             print("Target reached Destination!!!!!!")
-            # print("STATE CHECKPOINT: ", self.state_robot_checkpoint)
-        # penalize for choosing the same action back to back
+        # # penalize for choosing the same action back to back
         elif (action == 0 and self.state_last_action == 0) or (action == 1 and self.state_last_action == 1) or (action == 2 and self.state_last_action == 2) or (action == 3 and self.state_last_action == 3): 
             reward = -3
             # reward = 0
@@ -384,6 +395,7 @@ class xArmEnv(gym.Env):
             # END EPISODE if agent moves to the target with its gripper closed 
             terminated = True
             reward = -30
+            self.state_collision = 1
             # reward=0
         # provide reward for moving to target
         elif np.array_equal(self._agent_position[0:3], self._target_position) and action == 0:
@@ -407,6 +419,10 @@ class xArmEnv(gym.Env):
             reward = -1
         else:
             reward = 0
+        
+        # IMPORTANT EXPERIMENT: I would provide a reward of 1 if it was what i wanted and otherwise -1, this lead to the robot at 
+        # a new episode pick the ideal path sequentially: actions: 0,2,1
+        # reward = input("Provide a reward for this action: ")
             
         print("Reward: ", reward)
         
@@ -480,7 +496,9 @@ class xArmEnv(gym.Env):
         fig.show()
         
     def _get_obs(self):
-         return {"agent": np.round(self._agent_position, decimals=1) , "target": np.round(self._target_position, decimals=1), "gripper_state": self.gripper_state, "historical_actions": self.historical_actions}
+         return {"agent": np.round(self._agent_position, decimals=1) , "target": np.round(self._target_position, decimals=1), 
+                 "gripper_state": self.gripper_state, "historical_actions": self.historical_actions, "grabbed_target": self.state_grabbed_target,
+                 "target_reached_destination": self.state_target_reached_destination, "collision": self.state_collision, "arm_reached_target": self.state_arm_reached_target}
     
     # distance between 2 points in 3D space (agent's and target's xyz positions)
     def _get_info(self):
