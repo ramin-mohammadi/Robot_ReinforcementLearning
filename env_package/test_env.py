@@ -8,28 +8,29 @@ import time
 
 env = gymnasium.make('FactoryRobotArm/xArm-v0')
 
-# model = PPO("MultiInputPolicy", env, verbose=1)
-# model.learn(total_timesteps=2000)
 
 
-# obs, info = env.reset()
-# while True:
-#     action, _states = model.predict(obs)
-#     obs, rewards, dones, info = env.step(action)
-#     env.render()
-
-# model = DQN("MultiInputPolicy", env, verbose=1)
-model = PPO("MultiInputPolicy", env, verbose=1)
-
-model.learn(total_timesteps=300, log_interval=1)
 
 
+model = DQN("MultiInputPolicy", env, verbose=1)
+# model = PPO("MultiInputPolicy", env, verbose=1, learning_rate=0.001, gamma=0.8)  
+# gamma is the discount factor (go for higher value bc with dense reward system, want model to go for big reward in future 
+# being putting the block at the destination rather repetititve quick rewards)
+
+
+model.learn(total_timesteps=200, log_interval=1)
 model.save("DQN_xArm")
+
+
 # del model # remove to demonstrate saving and loading
  
 exit()
-# model = DQN.load("DQN_xArm")
-model = PPO.load("DQN_xArm")
+
+
+
+
+# model = DQN.load("DQN_xArm_20000")
+# model = PPO.load("DQN_xArm")
 
 obs, info = env.reset()
 while True:
@@ -68,8 +69,6 @@ TO DO:
 - position changed by = (assumed speed mm/s * (sign of positional displacement for that axis) ) / time in seconds passed since last time step() was called
 - above requires history of last action performed, and needs to account for control freq -> solution apparently is to perform the same action for multiple steps before choosing a new action
 
--figure out how to connect to robot wirelessy
--call velocity function and get position function -> for training the model, i would assume is what the physics engine is for to simulate it
 
 - implement physics engine and get working then connect and use the real robot and its functions? -> but once i use the real robot rather using the physics engine functions i would be calling the real robot -> so ignore physics engine and use the real robot
 """
