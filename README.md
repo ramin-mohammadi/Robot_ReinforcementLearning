@@ -38,3 +38,4 @@
 - (YOU WILL HAVE TO REPEAT THIS STEP ANYTIME YOU MAKE CHANGES TO CODE IN THE CUSTOM ENVIRONMENT) In the anaconda prompt with same env activated, download the custom gymnasium env and its required dependencies:
 - cd into the env_package folder
 - pip install -e .
+- in VSCode when running test_env.py, make sure IDE is using the python installed in your conda environment (look at bottom right of screen)
