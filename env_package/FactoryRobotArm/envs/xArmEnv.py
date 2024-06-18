@@ -9,8 +9,10 @@ import time
 import plotly.express as px
 import plotly.graph_objects as go
 
-
+# directory to these local files is relative to the python package being the folder env_package
 from FactoryRobotArm import xArmClass
+import obj_det_xyz_angle
+
 
 
 # FIRST GOAL get robot arm to go to detected location from camera, then can enhance to move object to a locaiton after picking it up and other more complicated tasks
@@ -223,9 +225,17 @@ class xArmEnv(gym.Env):
         
         
         if action == 0:
-            self.robot_main.move_to(self._target_position)
+            yaw_rotation = -91.5
+
+            # connect to camera that performs object detection (detects red or blue) to get x,y, and yaw degree rotation
+            camera_info = self.get_xy_rotation_block() # returns [x,y, yaw degree rotation]
+            self._target_position[0:2] = camera_info[0:2]
+            yaw_rotation = camera_info[2]
+            
+            self.robot_main.move_to(self._target_position, yaw_rotation)
         elif action == 1:
-            self.robot_main.move_to(self._destination_position)
+            yaw_rotation = -91.5
+            self.robot_main.move_to(self._destination_position, -91.5)
         elif action == 2:
             self.robot_main.close_gripper()
             self.gripper_state = 0
@@ -537,4 +547,14 @@ class xArmEnv(gym.Env):
                 temp_2 = self.historical_actions[i]
                 self.historical_actions[i] = temp_1  
                 temp_1 = temp_2
-        
+    
+    # expect to return array of [x,y, yaw degree rotation]
+    def get_xy_rotation_block(self):
+        red_block, blue_block = obj_det_xyz_angle.get_pos_angle()
+        if red_block.is_detected:
+            return np.array([red_block.x, red_block.y, red_block.rotation])
+        elif blue_block.is_detected:
+            return np.array([blue_block.x, blue_block.y, blue_block.rotation])
+        else:
+            print("\nERROR: Object not detected\n")
+            exit(-1)

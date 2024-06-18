@@ -5,5 +5,5 @@ from setuptools import setup
 setup(
     name="FactoryRobotArm",
     version="0.0.1",
-    install_requires=["gymnasium==0.29.1", "numpy==1.26.4", "plotly==5.22.0", "pandas==2.2.2"],
+    install_requires=["gymnasium==0.29.1", "numpy==1.26.4", "plotly==5.22.0", "pandas==2.2.2", "opencv-python==4.10.0.84"],
 )

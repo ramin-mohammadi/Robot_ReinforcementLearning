@@ -248,7 +248,8 @@ class RobotMain(object):
         except Exception as e:
             self.pprint('MainException: {}'.format(e))
             
-    def move_to(self, pos):
+    
+    def two_agent(self, pos, yaw_rotation):
         try:
             self._tcp_speed = 71
             self._tcp_acc = 1000
@@ -258,7 +259,35 @@ class RobotMain(object):
             if not self._check_code(code, 'set_tcp_load'):
                 return
             
-            code = self._arm.set_position(*[pos[0], pos[1], pos[2], 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            # move to block
+            code = self._arm.set_position(*[pos[0], pos[1], pos[2], 180.0, 0.0, yaw_rotation], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            if not self._check_code(code, 'set_position'):
+                return
+            
+            code = self._arm.set_pause_time(1)
+            if not self._check_code(code, 'set_pause_time'):
+                return
+            
+            # move 
+        
+
+        except Exception as e:
+            self.pprint('MainException: {}'.format(e))
+            # self.move_initial()
+    
+    
+            
+    def move_to(self, pos, yaw_rotation):
+        try:
+            self._tcp_speed = 71
+            self._tcp_acc = 1000
+            self._angle_speed = 30
+            self._angle_acc = 200
+            code = self._arm.set_tcp_load(0.82, [0, 0, 48])
+            if not self._check_code(code, 'set_tcp_load'):
+                return
+            
+            code = self._arm.set_position(*[pos[0], pos[1], pos[2], 180.0, 0.0, yaw_rotation], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
             if not self._check_code(code, 'set_position'):
                 return
             
