@@ -386,5 +386,5 @@ def get_pos_angle():
 
 
 # test camera:
-# red_block, blue_block = get_pos_angle()
-# print_camera_info(red_block, blue_block)
+red_block, blue_block = get_pos_angle()
+print_camera_info(red_block, blue_block)
