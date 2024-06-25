@@ -9,6 +9,8 @@ import threading
 from xarm import version
 from xarm.wrapper import XArmAPI
 
+import numpy as np
+
 
 class RobotMain(object):
     """Robot Main Class"""
@@ -81,9 +83,11 @@ class RobotMain(object):
             return self._arm.state < 4
         else:
             return False
+        
+        
+        
 
-    # Robot Main Run
-    def assemble(self):
+    def assemble(self, xy_blocks: np.ndarray, n_blocks: int, height_block: float):
         try:
             self._tcp_speed = 71
             self._tcp_acc = 1000
@@ -92,75 +96,96 @@ class RobotMain(object):
             code = self._arm.set_tcp_load(0.82, [0, 0, 48])
             if not self._check_code(code, 'set_tcp_load'):
                 return
-            code = self._arm.set_gripper_position(850, wait=True, speed=5000, auto_enable=True)
-            if not self._check_code(code, 'set_gripper_position'):
-                return
-            code = self._arm.set_position(*[1.4, 230.0, 148.3, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_gripper_position(296, wait=True, speed=5000, auto_enable=True)
-            if not self._check_code(code, 'set_gripper_position'):
-                return
-            code = self._arm.set_position(*[211.3, 104.1, 450.0, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_position(*[211.3, 104.1, 232.0, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_gripper_position(850, wait=True, speed=1000, auto_enable=True)
-            if not self._check_code(code, 'set_gripper_position'):
-                return
-            code = self._arm.set_position(*[211.3, 104.1, 258.1, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_gripper_position(100, wait=True, speed=5000, auto_enable=True)
-            if not self._check_code(code, 'set_gripper_position'):
-                return
-            code = self._arm.set_position(*[211.3, 108.2, 244.5, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_position(*[211.3, 108.2, 335.5, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
+            
+            # move to initial position
             code = self._arm.set_position(*[-12.1, 181.6, 222.3, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
             if not self._check_code(code, 'set_position'):
                 return
+            
+            """
+            Loop:
+            - open gripper
+            - move to block (x y given by camera)
+            - close gripper
+            - move block above where it is being put down (initial height + ith block * height_block)
+            - move block down onto the below platform or block (initial height + ith block * height_block)
+            - open gripper
+            - move arm above block
+            - close gripper
+            - push gripper down onto block
+            - make arm go above block again
+            - move to initial position
+            """
+            
+            destination_x = 211.3
+            destination_y = 108 # 104.1
+            
+            for i in range(n_blocks):
+                # open gripper
+                code = self._arm.set_gripper_position(850, wait=True, speed=5000, auto_enable=True)
+                if not self._check_code(code, 'set_gripper_position'):
+                    return
+                
+                # move to block (x y given by camera)
+                code = self._arm.set_position(*[xy_blocks[i][0], xy_blocks[i][1], 148.3, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+                if not self._check_code(code, 'set_position'):
+                    return
+
+                # close gripper
+                code = self._arm.set_gripper_position(296, wait=True, speed=5000, auto_enable=True)
+                if not self._check_code(code, 'set_gripper_position'):
+                    return
+                
+                # move block above where it is being put down (initial height + ith block * height_block)
+                initial_height_above = 290.2
+                code = self._arm.set_position(*[destination_x, destination_y, initial_height_above + i * height_block, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+                if not self._check_code(code, 'set_position'):
+                    return
+            
+                # move block down onto the below platform or block
+                initial_height_down = 231
+                code = self._arm.set_position(*[destination_x, destination_y, initial_height_down + i * height_block, 180.0, 0.0, -91.5], speed=40, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+                if not self._check_code(code, 'set_position'):
+                    return
+                
+                # open gripper
+                code = self._arm.set_gripper_position(850, wait=True, speed=1000, auto_enable=True)
+                if not self._check_code(code, 'set_gripper_position'):
+                    return
+                
+                # move arm above block
+                code = self._arm.set_position(*[destination_x, destination_y, initial_height_above + i * height_block, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+                if not self._check_code(code, 'set_position'):
+                    return
+                
+                # close gripper
+                code = self._arm.set_gripper_position(100, wait=True, speed=5000, auto_enable=True)
+                if not self._check_code(code, 'set_gripper_position'):
+                    return
+                
+                # push gripper down onto block                
+                z_down = 43.5  # mm to move arm down by to push block down, z = 246.7 for first block -> 290.2 - 246.7
+                code = self._arm.set_position(*[destination_x, destination_y, initial_height_above + (i * height_block) - z_down, 180.0, 0.0, -91.5], speed=20, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+                if not self._check_code(code, 'set_position'):
+                    return
+                
+                # make arm go above block again
+                code = self._arm.set_position(*[destination_x, destination_y, initial_height_above + i * height_block, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+                if not self._check_code(code, 'set_position'):
+                    return
+                
+                # move to initial position
+                code = self._arm.set_position(*[-12.1, 181.6, 222.3, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+                if not self._check_code(code, 'set_position'):
+                    return
+        
+        
+            # open gripper
             code = self._arm.set_gripper_position(850, wait=True, speed=5000, auto_enable=True)
             if not self._check_code(code, 'set_gripper_position'):
                 return
-            code = self._arm.set_position(*[1.4, 300.5, 148.3, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_gripper_position(296, wait=True, speed=4000, auto_enable=True)
-            if not self._check_code(code, 'set_gripper_position'):
-                return
-            code = self._arm.set_position(*[211.3, 104.1, 450.0, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_position(*[213.3, 106.1, 252.2, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_gripper_position(850, wait=True, speed=1000, auto_enable=True)
-            if not self._check_code(code, 'set_gripper_position'):
-                return
-            code = self._arm.set_position(*[213.3, 106.1, 275.9, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_gripper_position(100, wait=True, speed=5000, auto_enable=True)
-            if not self._check_code(code, 'set_gripper_position'):
-                return
-            code = self._arm.set_position(*[213.3, 106.1, 265.0, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_position(*[210.9, 101.1, 335.5, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_position(*[-12.1, 181.6, 222.3, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_gripper_position(850, wait=True, speed=5000, auto_enable=True)
-            if not self._check_code(code, 'set_gripper_position'):
-                return
+                
+            
         except Exception as e:
             self.pprint('MainException: {}'.format(e))
         # self.alive = False
@@ -168,8 +193,12 @@ class RobotMain(object):
         # self._arm.release_state_changed_callback(self._state_changed_callback)
         # if hasattr(self._arm, 'release_count_changed_callback'):
         #     self._arm.release_count_changed_callback(self._count_changed_callback)
+     
+     
+     
+     
         
-    def disassemble(self):
+    def disassemble(self, n_blocks, height_block):
         try:
             self._tcp_speed = 71
             self._tcp_acc = 1000
@@ -241,8 +270,11 @@ class RobotMain(object):
             self._arm.release_count_changed_callback(self._count_changed_callback)
 
 
-# if __name__ == '__main__':
-#     RobotMain.pprint('xArm-Python-SDK Version:{}'.format(version.__version__))
-#     arm = XArmAPI('192.168.1.207', baud_checkset=False)
-#     robot_main = RobotMain(arm)
-#     robot_main.run()
+if __name__ == '__main__':
+    RobotMain.pprint('xArm-Python-SDK Version:{}'.format(version.__version__))
+    arm = XArmAPI('192.168.1.207', baud_checkset=False)
+    robot_main = RobotMain(arm)
+    
+    height_block = 19.5
+    xy_blocks = [[1.4, 230], [1.4, 230], [1.4, 230], [1.4, 230]]
+    robot_main.assemble(xy_blocks=xy_blocks, n_blocks=4, height_block=height_block)

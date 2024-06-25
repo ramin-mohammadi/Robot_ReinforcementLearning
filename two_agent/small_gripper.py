@@ -83,7 +83,7 @@ class RobotMain(object):
             return False
 
     
-    def disassemble(self, n_blocks, height_block):
+    def disassemble(self, n_blocks: int, height_block: float):
         try:
             self._tcp_speed = 71
             self._tcp_acc = 1000
@@ -147,7 +147,6 @@ class RobotMain(object):
 #     RobotMain.pprint('xArm-Python-SDK Version:{}'.format(version.__version__))
 #     arm = XArmAPI('192.168.1.176', baud_checkset=False)
 #     robot_main = RobotMain(arm)
-#     # robot_main.run()
     
 #     height_block = 19.5    # -58.5 -> -39  (mm)
 #     robot_main.disassemble(n_blocks=4, height_block=height_block)
