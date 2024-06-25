@@ -10,7 +10,7 @@ from xarm import version
 from xarm.wrapper import XArmAPI
 
 
-class RobotMain(object):
+class SmallGripper(object):
     """Robot Main Class"""
     def __init__(self, robot, **kwargs):
         self.alive = True
@@ -82,6 +82,30 @@ class RobotMain(object):
         else:
             return False
 
+    def move_initial(self):
+        try:
+            self._tcp_speed = 71
+            self._tcp_acc = 1000
+            self._angle_speed = 30
+            self._angle_acc = 200
+            code = self._arm.set_tcp_load(0.277, [0, 0, 30])
+            if not self._check_code(code, 'set_tcp_load'):
+                return
+       
+            # move to initial position
+            code = self._arm.set_position(*[-26.0, 167.6, -54.2, -70.9, 89.2, -160.6], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=0.0, wait=False)
+            if not self._check_code(code, 'set_position'):
+                return
+            
+        except Exception as e:
+            self.pprint('MainException: {}'.format(e))
+        self.alive = False
+        self._arm.release_error_warn_changed_callback(self._error_warn_changed_callback)
+        self._arm.release_state_changed_callback(self._state_changed_callback)
+        if hasattr(self._arm, 'release_count_changed_callback'):
+            self._arm.release_count_changed_callback(self._count_changed_callback)
+            
+            
     
     def disassemble(self, n_blocks: int, height_block: float):
         try:
@@ -141,12 +165,63 @@ class RobotMain(object):
         self._arm.release_state_changed_callback(self._state_changed_callback)
         if hasattr(self._arm, 'release_count_changed_callback'):
             self._arm.release_count_changed_callback(self._count_changed_callback)
+            
+           
+           
+            
+    def disassemble_ith(self, i: int, n_blocks: int, height_block: float):
+        try:
+            self._tcp_speed = 71
+            self._tcp_acc = 1000
+            self._angle_speed = 30
+            self._angle_acc = 200
+            code = self._arm.set_tcp_load(0.277, [0, 0, 30])
+            if not self._check_code(code, 'set_tcp_load'):
+                return
+       
+            # move to initial position
+            code = self._arm.set_position(*[-26.0, 167.6, -54.2, -70.9, 89.2, -160.6], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=0.0, wait=False)
+            if not self._check_code(code, 'set_position'):
+                return
+            
+            
+            lowest_z = -58.5 # z for bottom block
+            
+            """
+            Loop:
+            - open gripper
+            - move to ith-1 block's z
+            - close gripper (if on bottom block so i=0 then dont close gripper)
+            """
+            
+            # for i in reversed(range(n_blocks - 1)): # - 1 b/c dont want to grab the top block
+            # open gripper
+            code = self._arm.open_lite6_gripper()
+            time.sleep(0.5)
+            self._arm.stop_lite6_gripper()
+            if not self._check_code(code, 'open_lite6_gripper'):
+                return
+            
+            # move to ith-1 block's z
+            code = self._arm.set_position(*[-26.0, 33.0, lowest_z + i * height_block, -70.9, 89.2, -160.6], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=0.0, wait=False)
+            if not self._check_code(code, 'set_position'):
+                return
+            
+            # close gripper
+            if i != 0: # keep gripper open for last block
+                code = self._arm.close_lite6_gripper()
+                if not self._check_code(code, 'close_lite6_gripper'):
+                    return
+            
+        
+        except Exception as e:
+            self.pprint('MainException: {}'.format(e))
 
 
 # if __name__ == '__main__':
-#     RobotMain.pprint('xArm-Python-SDK Version:{}'.format(version.__version__))
+#     SmallGripper.pprint('xArm-Python-SDK Version:{}'.format(version.__version__))
 #     arm = XArmAPI('192.168.1.176', baud_checkset=False)
-#     robot_main = RobotMain(arm)
+#     robot_main = SmallGripper(arm)
     
 #     height_block = 19.5    # -58.5 -> -39  (mm)
 #     robot_main.disassemble(n_blocks=4, height_block=height_block)
