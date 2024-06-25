@@ -16,7 +16,7 @@ number_of_squares_Y = 7  # Number of chessboard squares along the y-axis
 nX = number_of_squares_X - 1 # Number of interior corners along x-axis
 nY = number_of_squares_Y - 1 # Number of interior corners along y-axis
 
-square_size = 22.85 # ONE SQUARE LENGTH IN CENTIMETERS
+square_size = 22.85 # ONE SQUARE LENGTH IN MM
  
 # Store vectors of 3D points for all chessboard images (world coordinate frame)
 object_points = []
