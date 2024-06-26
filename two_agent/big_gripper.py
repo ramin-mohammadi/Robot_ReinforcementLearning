@@ -87,7 +87,7 @@ class BigGripper(object):
         
         
 
-    def assemble(self, xy_blocks: np.ndarray, n_blocks: int, height_block: float):
+    def assemble(self, xy_blocks: np.ndarray, rotation_blocks: np.ndarray, n_blocks: int, height_block: float):
         try:
             self._tcp_speed = 71
             self._tcp_acc = 1000
@@ -127,7 +127,7 @@ class BigGripper(object):
                     return
                 
                 # move to block (x y given by camera)
-                code = self._arm.set_position(*[xy_blocks[i][0], xy_blocks[i][1], 148.3, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+                code = self._arm.set_position(*[xy_blocks[i][0], xy_blocks[i][1], 148.3, 180.0, 0.0, rotation_blocks[i]], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
                 if not self._check_code(code, 'set_position'):
                     return
 
@@ -164,7 +164,7 @@ class BigGripper(object):
                     return
                 
                 # push gripper down onto block                
-                z_down = 43.5  # mm to move arm down by to push block down, z = 246.7 for first block -> 290.2 - 246.7
+                z_down = 40  # mm to move arm down by to push block down, z = 246.7 for first block -> 290.2 - 246.7 = 43.5
                 code = self._arm.set_position(*[destination_x, destination_y, initial_height_above + (i * height_block) - z_down, 180.0, 0.0, -91.5], speed=20, mvacc=self._tcp_acc, radius=-1.0, wait=True)
                 if not self._check_code(code, 'set_position'):
                     return
@@ -316,7 +316,9 @@ class BigGripper(object):
             - open gripper
             - move to initial position
             """
-            destination_x = 201.3
+            destination_x = 215.5 # 201.3 for the bottom block
+            if i == 0:
+                destination_x = 201.3
             destination_y = 106.6 
             
             
@@ -332,28 +334,28 @@ class BigGripper(object):
             
             # move arm above block
             initial_height_above = 290.2
-            code = self._arm.set_position(*[destination_x, destination_y, initial_height_above + i * height_block, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            code = self._arm.set_position(*[destination_x, destination_y, initial_height_above + i * height_block, 180.0, 0.0, 0.0], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
             if not self._check_code(code, 'set_position'):
                 return
             
             # move arm down to block 
-            initial_height_down = 231
-            code = self._arm.set_position(*[destination_x, destination_y, initial_height_down + i * height_block, 180.0, 0.0, -91.5], speed=40, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            initial_height_down = 231 # 231
+            code = self._arm.set_position(*[destination_x, destination_y, initial_height_down + i * height_block, 180.0, 0.0, 0.0], speed=40, mvacc=self._tcp_acc, radius=-1.0, wait=True)
             if not self._check_code(code, 'set_position'):
                 return
 
             # close gripper
-            code = self._arm.set_gripper_position(260, wait=True, speed=1000, auto_enable=True)
+            code = self._arm.set_gripper_position(250, wait=True, speed=1000, auto_enable=True) # 260
             if not self._check_code(code, 'set_gripper_position'):
                 return
             
             # move arm above again
-            code = self._arm.set_position(*[destination_x, destination_y, initial_height_above + i * height_block, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            code = self._arm.set_position(*[destination_x, destination_y, initial_height_above + i * height_block, 180.0, 0.0, 0.0], speed=30, mvacc=self._tcp_acc, radius=-1.0, wait=True)
             if not self._check_code(code, 'set_position'):
                 return
             
             # move block to a new location
-            code = self._arm.set_position(*[xy_blocks[i][0], xy_blocks[i][1], 155.3, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            code = self._arm.set_position(*[xy_blocks[i][0], xy_blocks[i][1], 175, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
             if not self._check_code(code, 'set_position'):
                 return
             

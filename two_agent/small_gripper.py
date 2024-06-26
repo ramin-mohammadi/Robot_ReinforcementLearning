@@ -99,11 +99,11 @@ class SmallGripper(object):
             
         except Exception as e:
             self.pprint('MainException: {}'.format(e))
-        self.alive = False
-        self._arm.release_error_warn_changed_callback(self._error_warn_changed_callback)
-        self._arm.release_state_changed_callback(self._state_changed_callback)
-        if hasattr(self._arm, 'release_count_changed_callback'):
-            self._arm.release_count_changed_callback(self._count_changed_callback)
+        # self.alive = False
+        # self._arm.release_error_warn_changed_callback(self._error_warn_changed_callback)
+        # self._arm.release_state_changed_callback(self._state_changed_callback)
+        # if hasattr(self._arm, 'release_count_changed_callback'):
+        #     self._arm.release_count_changed_callback(self._count_changed_callback)
             
             
     
@@ -178,14 +178,21 @@ class SmallGripper(object):
             code = self._arm.set_tcp_load(0.277, [0, 0, 30])
             if not self._check_code(code, 'set_tcp_load'):
                 return
-       
-            # move to initial position
-            code = self._arm.set_position(*[-26.0, 167.6, -54.2, -70.9, 89.2, -160.6], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=0.0, wait=False)
-            if not self._check_code(code, 'set_position'):
+            
+            # open gripper
+            code = self._arm.open_lite6_gripper()
+            time.sleep(0.5)
+            self._arm.stop_lite6_gripper()
+            if not self._check_code(code, 'open_lite6_gripper'):
                 return
+       
+            # # move to initial position
+            # code = self._arm.set_position(*[-26.0, 167.6, -54.2, -70.9, 89.2, -160.6], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=0.0, wait=False)
+            # if not self._check_code(code, 'set_position'):
+            #     return
             
             
-            lowest_z = -58.5 # z for bottom block
+            lowest_z = -58 # z for bottom block, -58.5
             
             """
             Loop:
@@ -202,13 +209,32 @@ class SmallGripper(object):
             if not self._check_code(code, 'open_lite6_gripper'):
                 return
             
+           
+            
+            x = -23.0 # -26
+            y = 24 # 33
+            if i == 0 or i == -1:
+                y = 33
+            
             # move to ith-1 block's z
-            code = self._arm.set_position(*[-26.0, 33.0, lowest_z + i * height_block, -70.9, 89.2, -160.6], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=0.0, wait=False)
-            if not self._check_code(code, 'set_position'):
-                return
+            if i >= 1:
+                code = self._arm.set_position(*[x, y, lowest_z + i * height_block, -70.9, 89.2, -160.6], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=0.0, wait=False)
+                if not self._check_code(code, 'set_position'):
+                    return
+            
+            if i == 0 or i == -1:
+                # move y
+                code = self._arm.set_position(*[x, y, lowest_z + 1 * height_block, -70.9, 89.2, -160.6], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=0.0, wait=False)
+                if not self._check_code(code, 'set_position'):
+                    return
+                
+                # move z down
+                code = self._arm.set_position(*[x, y, lowest_z + 0 * height_block, -70.9, 89.2, -160.6], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=0.0, wait=False)
+                if not self._check_code(code, 'set_position'):
+                    return
             
             # close gripper
-            if i != 0: # keep gripper open for last block
+            if i >= 0: # keep gripper open for last block
                 code = self._arm.close_lite6_gripper()
                 if not self._check_code(code, 'close_lite6_gripper'):
                     return
