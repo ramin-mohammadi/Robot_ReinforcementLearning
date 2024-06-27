@@ -23,7 +23,7 @@ def print_camera_info(red_block: Block, blue_block: Block):
     blue_block.print()
 
 # Load calibration data
-with np.load('calibration_data.npz') as data:
+with np.load('multiple_img_calibration_data.npz') as data: # change to "multiple_img_calibration_data.npz" before running or if using different data imgs
     mtx = data['mtx']
     dist = data['dist']
     rvecs = data['rvecs']
