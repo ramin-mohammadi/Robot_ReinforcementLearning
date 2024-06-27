@@ -69,7 +69,7 @@ print(rot_matrix)
 
 homo_matrix = np.hstack((rot_matrix[0], tvec))
 # homo_matrix = np.hstack((real_rotation_matrix, [[0],[0],[0],[1]])) # add column 
-# homo_matrix = np.vstack((homo_matrix, [[0,0,0,1]])) # add row
+homo_matrix = np.vstack((homo_matrix, [[0,0,0,1]])) # add row
 
 print(homo_matrix)
 
@@ -81,13 +81,13 @@ print(homo_matrix)
 # X, Y, Z = robot_coordinates
 # print(f"Transformed robot coordinates: X={X}, Y={Y}, Z={Z}")
 
-image = [[188.5], [210.5], [160], [1]]
+image = [[188.5], [210.5], [0], [1]]   # robot 7.1, 305, 164
 
 # cam matrix * homo matrix (rotational and translational) * pixel coordinate vector
-print(np.dot(np.dot(mtx, homo_matrix ) , image))
+# print(np.dot(np.dot(mtx, homo_matrix ) , image))
 
 # homo matrix (rotational and translational) * pixel coordinate vector
-# print(np.dot(homo_matrix , image))
+print(np.dot(homo_matrix , image))
 
 # print(mtx)
 
