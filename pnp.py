@@ -19,9 +19,39 @@ def transform_to_robot_coordinates(image_point, depth, mtx, rotation_vector, tra
     return robot_coordinates.ravel()
 
 
+# https://medium.com/@pacogarcia3/calculate-x-y-z-real-world-coordinates-from-image-coordinates-using-opencv-from-fdxlabs-0adf0ec37cef
+def calculate_XYZ(u,v, camera_matrix, tvec, rot_matrix):
+                                      
+    #Solve: From Image Pixels, find World Points
+
+    uv_1=np.array([[u,v,1]], dtype=np.float32)
+    uv_1=np.transpose(uv_1)
+    scaling_factor = 0.56 # divide to convert pixel to mm
+    suv_1=uv_1 / scaling_factor 
+    xyz_c=np.dot(np.linalg.inv(camera_matrix), suv_1)
+    xyz_c=xyz_c-tvec
+    XYZ=np.dot(np.linalg.inv(rot_matrix) , xyz_c)
+    return XYZ
 
 
 
+# camera_points = np.array([[49, 137.5],
+#                  [35, 365],
+#                  [506, 200],
+#                  [534, 336],
+#                  [280,179],
+#                  [292,439],
+#                  [188,210],
+#                  [45,29]] , dtype=np.float32)
+
+# robot_points = np.array([[-263.4, 448.9, 0], # 150
+#                  [-297.3, 6, 0], # 156.9
+#                  [629.9, 312.5, 0],  # 166.9
+#                  [670.7, 929, 0], # 171.3
+#                  [195.2, 379.9, 0],#161.9
+#                  [205.4, -124.2, 0],
+#                  [6.9, 309.9, 0],
+#                  [-15.4, 474.7, 0]] , dtype=np.float32) 
 
 
 camera_points = np.array([[49, 137.5],
@@ -30,7 +60,9 @@ camera_points = np.array([[49, 137.5],
                  [534, 336],
                  [280,179],
                  [292,439],
-                 [188,210]] , dtype=np.float32)
+                 [188,210],
+                 [187.5, 210]]
+              , dtype=np.float32)
 
 robot_points = np.array([[-263.4, 448.9, 0], # 150
                  [-297.3, 6, 0], # 156.9
@@ -38,8 +70,8 @@ robot_points = np.array([[-263.4, 448.9, 0], # 150
                  [670.7, 929, 0], # 171.3
                  [195.2, 379.9, 0],#161.9
                  [205.4, -124.2, 0],
-                 [6.9, 309.9, 0]] , dtype=np.float32) 
-
+                 [6.9, 309.9, 0],
+                  [-15.4, 474.7, 0]] , dtype=np.float32) 
 
 # Load calibration data
 with np.load('./multiple_img_calibration_data.npz') as data: # change to "multiple_img_calibration_data.npz" before running or if using different data imgs
@@ -62,14 +94,14 @@ print(rvec)
 print(tvec)
 
 # turn rotational vector into rotational matrix
-# rot_matrix[0] contains 3x3 rotational matrix
+# NOTE: rot_matrix[0] contains 3x3 rotational matrix, (could just do rot_matrix, _ = cv2.Rodrigues() )
 rot_matrix = cv2.Rodrigues(rvec) 
 
 print(rot_matrix)
 
 homo_matrix = np.hstack((rot_matrix[0], tvec))
 # homo_matrix = np.hstack((real_rotation_matrix, [[0],[0],[0],[1]])) # add column 
-homo_matrix = np.vstack((homo_matrix, [[0,0,0,1]])) # add row
+# homo_matrix = np.vstack((homo_matrix, [[0,0,0,1]])) # add row
 
 print(homo_matrix)
 
@@ -82,18 +114,19 @@ print(homo_matrix)
 # print(f"Transformed robot coordinates: X={X}, Y={Y}, Z={Z}")
 
 image = [[188.5], [210.5], [0], [1]]   # robot 7.1, 305, 164
+robot = [[7.1], [305], [0], [1]]
 
 # cam matrix * homo matrix (rotational and translational) * pixel coordinate vector
-# print(np.dot(np.dot(mtx, homo_matrix ) , image))
+print(np.dot(np.dot(mtx, homo_matrix ) , robot))
 
 # homo matrix (rotational and translational) * pixel coordinate vector
-print(np.dot(homo_matrix , image))
+# print(np.dot(homo_matrix , image))
 
-# print(mtx)
-
-
+print("Camera Matrix: ", mtx)
 
 
+
+print(calculate_XYZ(u=image[0][0], v=image[1][0], camera_matrix=mtx, tvec=tvec, rot_matrix=rot_matrix[0]))
 
 
 
