@@ -100,7 +100,7 @@ class RobotMain(object):
         else:
             return False
 
-    def draw_point(self, point):
+    def draw_point(self, point, angle):
         if point == '1':
             lowX, lowY = -40, 180
         elif point == '2':
@@ -110,29 +110,31 @@ class RobotMain(object):
         elif point == '4':
             lowX, lowY = -40, 390
         elif point == '5':
-            lowX, lowY = -5, 320
+            lowX, lowY = -5, 295
+        elif point == 'done':
+            exit()
         else:
             print("Please enter 1 - 5")
             return
         highX, highY = lowX + 20, lowY + 20
 
-        code = self._arm.set_position(*[lowX, lowY, 222.3, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+        code = self._arm.set_position(*[lowX, lowY, 222.3, 180.0, 0.0, angle], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
         if not self._check_code(code, 'set_position'):
             return
         input("Press Enter for next corner")
-        code = self._arm.set_position(*[highX, lowY, 222.3, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+        code = self._arm.set_position(*[highX, lowY, 222.3, 180.0, 0.0, angle], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
         if not self._check_code(code, 'set_position'):
             return
         input("Press Enter for next corner")
-        code = self._arm.set_position(*[highX, highY, 222.3, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+        code = self._arm.set_position(*[highX, highY, 222.3, 180.0, 0.0, angle], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
         if not self._check_code(code, 'set_position'):
             return
         input("Press Enter for next corner")
-        code = self._arm.set_position(*[lowX, highY, 222.3, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+        code = self._arm.set_position(*[lowX, highY, 222.3, 180.0, 0.0, angle], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
         if not self._check_code(code, 'set_position'):
             return
         input("Press Enter for next corner")
-        code = self._arm.set_position(*[lowX, lowY, 222.3, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+        code = self._arm.set_position(*[lowX, lowY, 222.3, 180.0, 0.0, angle], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
         if not self._check_code(code, 'set_position'):
             return
         print(f"Point {point} done")
@@ -145,8 +147,11 @@ class RobotMain(object):
             self._angle_speed = 30
             self._angle_acc = 200
 
+            gripper_angle = 43.5
+                #-91.5, -46.5, -1.5, 43.5, 88.5
+
             # INITIAL POSITION
-            code = self._arm.set_position(*[-12.1, 181.6, 222.3, 180.0, 0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            code = self._arm.set_position(*[-12.1, 181.6, 222.3, 180.0, 0, gripper_angle], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
             if not self._check_code(code, 'set_position'):
                 return
             code = self._arm.set_gripper_position(85, wait=True, speed=5000, auto_enable=True)
@@ -156,10 +161,8 @@ class RobotMain(object):
             print("===At initial position===")
 
             while True:
-                point = input("Point 1, 2, 3, 4, or 5:\n")
-                self.draw_point(point)
-
-            print("Done")
+                point = input("Point 1, 2, 3, 4, 5, or \'done\':\n")
+                self.draw_point(point, gripper_angle)
             
         except Exception as e:
             self.pprint('MainException: {}'.format(e))
