@@ -1,6 +1,13 @@
 import cv2
 import numpy as np
-import glob
+# import glob
+
+# # Define the chessboard dimensions and square size in millimeters
+# chessboard_size = (6, 9)  # number of internal corners in the chessboard pattern (9x6 for this example)
+# square_size = 25  # Size of a square in millimeters (e.g., 25 mm)
+
+# images = glob.glob('REU Robotic Arm\calibration_images\cropped_chess\*.jpg')
+
 
 # Create instance to store red or blue object info 
 class Block(object):
@@ -23,7 +30,12 @@ def print_camera_info(red_block: Block, blue_block: Block):
     blue_block.print()
 
 # Load calibration data
-with np.load('multiple_img_calibration_data.npz') as data: # change to "multiple_img_calibration_data.npz" before running or if using different data imgs
+with np.load('62cmfromconveyor_calibration_data.npz') as data: 
+    #Best to worse:
+    # multiple_img_calibration_data.npz --> test_calibration folder
+    # cropped_chess_calibration_data.npz
+    # semi_cropped_calibration_data.npz
+    
     mtx = data['mtx']
     dist = data['dist']
     rvecs = data['rvecs']
@@ -36,12 +48,51 @@ def get_pos_angle():
     # codec for windows = DIVX
     # saves to video to files - overwrites each time
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    vid_output = cv2.VideoWriter('object_detection.avi', fourcc, 20.0, (640, 480))
+    # vid_output = cv2.VideoWriter('object_detection.avi', fourcc, 20.0, (640, 480))
+
+
+    # Webcam max resolution: 1920 x 1080 (1080p) #################################
+    # Max fps: 60ps
+    resolution_width = 1920
+    resolution_height = 1080
+    frameSize=(resolution_width, resolution_height)
+    fps = 60
+    
+    video_cap.set(3, resolution_width)
+    video_cap.set(4, resolution_height)
+    
+    vid_output = cv2.VideoWriter('pos_blocks_mm_t6.avi', fourcc, fps=fps, frameSize=frameSize)
+
+    ###############################################################################
+
+
 
     # hypothetical distance: distance from camera's (0,0) to robot's (0,0) in mm
-    distance_x = -363.18 # offset in mm for x-coordinate
-    distance_y = 198.19 # offset in mm for y-coordinate
-    mm = .8714 # conversion factor from pixels to mm
+    # distance_x = -363.18 # offset in mm for x-coordinate
+    # distance_y = 198.19 # offset in mm for y-coordinate
+    # mm = .8714 # conversion factor from pixels to mm
+    distance_x = 0
+    distance_y = 50
+    mm = 0.561   #for fixed_high use this one
+    mm = 1.4    #for fixed_low = 90cm --> 1.4mm scale
+
+    #     # Calculate SCALE_FACTOR
+    # # Using one of the calibration images to determine the average size of the squares in pixels
+    # image = cv2.imread(images[0])
+    # gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # ret, corners = cv2.findChessboardCorners(gray, chessboard_size, None)
+
+    # if ret:
+    #     corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), 
+    #                             (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001))
+    #     square_size_in_pixels = np.mean([cv2.norm(corners2[i] - corners2[i + 1]) for i in range(chessboard_size[0] - 1)])
+    #     SCALE_FACTOR = (square_size/ square_size_in_pixels)  #multiply by 2 if needed
+    #     print(f"SCALE_FACTOR: {SCALE_FACTOR:.4f} mm per pixel")
+    # else:
+    #     print("Failed to find corners in the sample image for SCALE_FACTOR calculation.")
+    #     exit()
+
+    # mm = SCALE_FACTOR
 
     # for _ in range(1):
     while True:
@@ -73,7 +124,7 @@ def get_pos_angle():
         red_upper = np.array([10, 255, 255], np.uint8)
         red_mask = cv2.inRange(hsv, red_lower, red_upper)
 
-        blue_lower = np.array([110, 110, 15], np.uint8) #might want to change the values here slightly to reduce noise
+        blue_lower = np.array([112, 112, 20], np.uint8) #might want to change the values here slightly to reduce noise
         blue_upper = np.array([115, 255, 255], np.uint8)
         blue_mask = cv2.inRange(hsv, blue_lower, blue_upper)
 
@@ -90,6 +141,22 @@ def get_pos_angle():
 
         green_mask = cv2.dilate(green_mask, kernl)
         res_green = cv2.bitwise_and(frame, frame, mask=green_mask)
+
+        cv2.line(frame, (320, 0), (320, 480), (0, 0, 0), 4)
+        cv2.line(frame, (0, 240), (640, 240), (0, 0, 0), 4)
+
+        # 4 Dots for alignment 
+        cv2.circle(frame, (210, 120), 4, (0, 0, 255), -1)
+        cv2.circle(frame, (430, 360), 4, (0, 0, 255), -1)
+        cv2.circle(frame, (210, 360), 4, (0, 0, 255), -1)
+        cv2.circle(frame, (430, 120), 4, (0, 0, 255), -1)
+
+        # Triangle dots solve for angle
+        cv2.circle(frame, (0, 101), 2, (0, 0, 255), -1)
+        cv2.circle(frame, (640, 83), 2, (0, 0, 255), -1)
+        cv2.circle(frame, (0, 83), 2, (0, 0, 255), -1)
+        # angle_displacemnt/top angle = 1.61 degrees
+
 
         contours, hierarchy = cv2.findContours(red_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         
@@ -284,11 +351,17 @@ def get_pos_angle():
         cv2.imshow("Green Blocks in Frame", res_green)
         cv2.imshow("Multiple Color Detection in Real-Time", frame)
 
+
+
         if cv2.waitKey(10) & 0xFF == ord('q'):
             break
 
     video_cap.release()
     vid_output.release()
+
+    # cv2.line(frame, (320, 0), (320, 480), (255, 255, 255), 4)
+    # cv2.line(frame, (start_point), (end_point), color, thickness) 
+    #frame = 640x480
 
     cv2.destroyAllWindows()
 
