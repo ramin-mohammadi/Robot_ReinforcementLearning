@@ -24,7 +24,7 @@ model.save("DQN_xArm")
 
 # del model # remove to demonstrate saving and loading
  
-exit()
+# exit()
 
 
 
@@ -56,7 +56,7 @@ while True:
         # break
         obs, info = env.reset()
         
-        
+
         
 # IMPORTANT: model cant reach the target bc there are so many different actions to choose from so will take FOREVER
 

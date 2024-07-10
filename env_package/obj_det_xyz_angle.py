@@ -10,7 +10,7 @@ class Block(object):
         self.is_detected = is_detected
         
     def print(self):
-        print(f"x: {(self.x):.1f} y: {(self.y):.1f} rotation: {(self.rotation):.0f} is_detected: {(self.is_detected)}")
+        print(f"x: {(self.x):.1f} y: {(self.y):.1f} rotation: {(self.rotation):.0f} is_detected: {(self.is_detected)}\n")
         
     
 
@@ -20,12 +20,30 @@ def print_camera_info(red_block: Block, blue_block: Block):
     red_block.print()
     print("Blue Block")
     blue_block.print()
+    
+# def get_robot_xy(x, y, w, h, mm, distance_x, distance_y):
+#     rob_x = (x + w / 2) / mm + distance_x
+#     rob_y = (y + h / 2) / mm + distance_y
+#     print("pixels: ", (x + w / 2), (y + h / 2))
+#     print("mm: ", (x + w / 2) / mm, (y + h / 2) / mm)
+#     print("Robot xy (w/ displacement): ", rob_x, rob_y)
+#     return rob_x, rob_y
+
+def get_robot_xy(x, y, w, h, mm_x, mm_y, distance_x, distance_y):
+    rob_x = ((x + w / 2) / mm_x) + distance_x
+    rob_y = ((y + h / 2) / mm_y) + distance_y
+    print("pixels: ", (x + w / 2), (y + h / 2))
+    print("mm: ", (x + w / 2) / mm_x, (y + h / 2) / mm_y)
+    print("Robot xy (w/ displacement): ", rob_x, rob_y)
+    return x, y
+    return rob_x, rob_y
+
 
 # Calculations are in pixels, output is in mm #
 
 
 def get_pos_angle():
-    video_cap = cv2.VideoCapture(0) # was originally 1 but was not working
+    video_cap = cv2.VideoCapture(0) # was originally 1 but was not working, 0 worked
 
     # SAVING VIDEO TO FILES:
     # codec for windows = DIVX
@@ -45,10 +63,16 @@ def get_pos_angle():
     # robot_x = camera_x + -363.18
     # robot_y = camera_y + 198.19
     
+    # robot mm in second box (closest to PC): (-0.5, 377)
+    # robot mm in first box: (-0.5, 301.9)
+    
     # x coordinate
-    distance_x = -363.18 # want to add this much to camera's generated x to match robot's x , used to be 383.5
+    distance_x = -338 # for blue, for red is -335
+    # want to add this much to camera's generated x to match robot's x , used to be 383.5
+    
     # y coordinate
-    distance_y = 198.19 # want to add this much to camera's generated y to match robot's y, used to be 117.3
+    distance_y = 23  # for blue,  for red is 170
+    # want to add this much to camera's generated y to match robot's y, used to be 117.3
     
     # Notes (converting pixel to mmm): with red and blue block in drawn boxes on grid paper:
         # x and y's by pixel: (321, 141) (319, 80) 
@@ -57,10 +81,17 @@ def get_pos_angle():
         # must scale distance up to be 70 mm so:
         # 70 / 61 = 1.14754098 -> multiply pixel values by this or divide by its reciprocal
         # reciprocal: 61 / 70 = .87142857
+        
+    # CONVERSION 1MM = .79 PIXELS AT A HEIGHT OF 550 MM
+    mm = .51428571 # .865 , .8714
+    mm_y = .5
+    mm_x = .5
+    
     
 
     # assuming every iteration of the loop is a frame
     for _ in range(1):
+    # while(True):
         # while ret = true,
         # reads frames from video_cap, frame = real time video
         ret, frame = video_cap.read()
@@ -79,7 +110,9 @@ def get_pos_angle():
         red_mask = cv2.inRange(hsv, red_lower, red_upper)
 
         # blue mask - og , s val = 80
-        blue_lower = np.array([110, 110, 15], np.uint8) #   (hue, saturation, value)    80 , 2
+        #(hue - color, saturation - intensity, value - brightness)
+        # https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.virtualartacademy.com%2Fthree-components-of-color%2F&psig=AOvVaw26U5pxrxxx0J3fx2NpP-wi&ust=1718997752921000&source=images&cd=vfe&opi=89978449&ved=0CBEQjRxqFwoTCPj3o-Tz6oYDFQAAAAAdAAAAABAE
+        blue_lower = np.array([110, 90, 50], np.uint8) #   (hue, saturation, value)    80 , 2
         blue_upper = np.array([115, 255, 255], np.uint8)  
         blue_mask = cv2.inRange(hsv, blue_lower, blue_upper) 
 
@@ -95,8 +128,6 @@ def get_pos_angle():
         green_upper = np.array([120, 135, 100], np.uint8) # 100, 200,255
         green_mask = cv2.inRange(hsv, green_lower, green_upper)
 
-        # CONVERSION 1MM = .79 PIXELS AT A HEIGHT OF 550 MM
-        mm = .8714 # .865 
 
         kernl = np.ones((7, 7), "uint8")
 
@@ -147,13 +178,18 @@ def get_pos_angle():
                 x, y, w, h = cv2.boundingRect(contour)
 
                 # distance x, y is in mm, to compare distances, both x,y must be mm
-                x_mm = np.round(x/mm, decimals=2)
-                y_mm = np.round(y/mm, decimals=2)
-                w_mm = w/mm
-                h_mm = h/mm
+                # x_mm = np.round(x/mm, decimals=2)
+                # y_mm = np.round(y/mm, decimals=2)
+                # w_mm = w/mm
+                # h_mm = h/mm
                 
-                print("Red pixel: ", x, y)
-                print("Red mm: ", x_mm, y_mm)
+                # print("Red pixel: ", x, y)
+                # print("Red mm: ", (x + w / 2) / mm, (y + h / 2) / mm)
+                print("Red:")
+                
+                rob_x, rob_y = get_robot_xy(x, y, w, h, mm_x, mm_y, distance_x, distance_y)
+                
+                #-3.3 410.1
 
             # distance in x-axis from camera to robot
                 # if x_mm > distance_x:
@@ -162,22 +198,29 @@ def get_pos_angle():
                 #     rob_x = distance_x - x_mm
                 # else:
                 #     rob_x = x_mm - distance_x
-                rob_x = x_mm + distance_x
+                # rob_x = (x + w / 2) / mm + distance_x
+                # rob_y = (y + h / 2) / mm + distance_y
                 # rob_x = distance_x - x_mm
+                
                 
 
             # distance in y-axis from camera(0,0) to robot(0,0)
                 #rob_y = y_mm - distance_y'
-                rob_y = y_mm + distance_y
                 
-                print("Red Robot mm: ", rob_x, rob_y)
+                
+                # print("Red Robot mm: ", rob_x, rob_y)
 
 
                 # dot above robots (x,y) to check if accurately positioned
     #            cv2.circle(frame, (distance_x, distance_y), 4, (0, 0, 0), -1)
 
                 # CENTER COORDINATES
-                cv2.putText(frame, f' ({((rob_x + w_mm / 2)):.1f},{((rob_y + h_mm / 2)):.1f})',
+                # cv2.putText(frame, f' ({((rob_x + w_mm / 2)):.1f},{((rob_y + h_mm / 2)):.1f})',
+                #             ((x + int(w / 2)), ((y + (int(h / 2)) + 20))), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0))
+                # # dot in center
+                # cv2.circle(frame, (x + int(w / 2), y + int(h / 2)), 4, (0, 0, 0), -1)
+                
+                cv2.putText(frame, f' ({((rob_x)):.1f},{((rob_y)):.1f})',
                             ((x + int(w / 2)), ((y + (int(h / 2)) + 20))), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0))
                 # dot in center
                 cv2.circle(frame, (x + int(w / 2), y + int(h / 2)), 4, (0, 0, 0), -1)
@@ -216,10 +259,10 @@ def get_pos_angle():
                 cv2.line(frame, (x, y + h), (x + int(w / 2), y + int(h / 2)), (0, 255, 0), 1, )
 
                 # INFO DISPLAYED IN CONSOLE
-                print(f'Red block angle:{angle}.Robot must rotate {(rot_angle):.0f} degrees')
-                red = f'Red Block center coord:({((rob_x + w_mm / 2)):.1f},{((rob_y + h_mm / 2)):.1f})'
+                print(f'Red block angle:{angle}.Robot must rotate {(rot_angle):.0f} degrees\n')
+        #         red = f'Red Block center coord:({((rob_x + w_mm / 2)):.1f},{((rob_y + h_mm / 2)):.1f})'
 
-        print(red)
+        # print(red)
         
         red_block = Block(red_x, red_y, red_rotation, red_is_detected)
 
@@ -243,13 +286,17 @@ def get_pos_angle():
                 x, y, w, h = cv2.boundingRect(contour)
 
                 # distance x, y is in mm, to compare distances, both x,y must be mm
-                x_mm = np.round(x / mm, decimals=2)
-                y_mm = np.round(y / mm, decimals=2)
-                w_mm = w / mm
-                h_mm = h / mm
+                # x_mm = np.round(x / mm, decimals=2)
+                # y_mm = np.round(y / mm, decimals=2)
+                # w_mm = w / mm
+                # h_mm = h / mm
                 
-                print("Blue pixels: ", x, y)
-                print("Blue mm: ", x_mm, y_mm)
+                print("Blue:")
+
+                # print("Blue mm: ", x_mm, y_mm)
+                
+                rob_x, rob_y = get_robot_xy(x, y, w, h, mm_x, mm_y, distance_x, distance_y)
+
 
                 # distance in x-axis from camera to robot
                 # if x_mm > distance_x:
@@ -258,18 +305,21 @@ def get_pos_angle():
                 #     rob_x = distance_x - x_mm
                 # else:
                 #     rob_x = x_mm - distance_x
-                rob_x = x_mm + distance_x
-                # rob_x = distance_x - x_mm
+                # rob_x = x_mm + distance_x
+                # # rob_x = distance_x - x_mm
 
 
-                # distance in y-axis from camera(0,0) to robot(0,0)
-                # rob_y = y_mm - distance_y
-                rob_y = y_mm + distance_y
+                # # distance in y-axis from camera(0,0) to robot(0,0)
+                # # rob_y = y_mm - distance_y
+                # rob_y = y_mm + distance_y
                 
-                print("Blue Robot mm: ", rob_x, rob_y)
+                # rob_x = (x_mm + w_mm / 2) + distance_x
+                # rob_y = (y_mm + h_mm / 2) + distance_y
+                
+                # print("Blue Robot mm: ", rob_x, rob_y)
                 
                 # DISPLAY CENTER COORDINATES
-                cv2.putText(frame, f' ({((rob_x + w_mm / 2)):.1f},{((rob_y + h_mm / 2)):.1f})',
+                cv2.putText(frame, f' ({((rob_x )):.1f},{((rob_y )):.1f})',
                             (x + int(w / 2), y + int(h / 2)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0))
                 # dot in center
                 cv2.circle(frame, (x + int(w / 2), y + int(h / 2)), 4, (0, 0, 0), -1)
@@ -306,10 +356,10 @@ def get_pos_angle():
                 cv2.line(frame, (x, y + h), (x + int(w / 2), y + int(h / 2)), (0, 255, 0), 1, )
 
                 # INFO DISPLAYED IN CONSOLE
-                print(f'Blue block angle:{angle}.Robot arm must rotate {(rot_angle):.0f} degrees')
-                blue = f'Blue Block center coord:({((rob_x + w_mm / 2) ):.1f},{((rob_y + h_mm / 2)):.1f})'
+                print(f'Blue block angle:{angle}.Robot arm must rotate {(rot_angle):.0f} degrees\n')
+        #         blue = f'Blue Block center coord:({((rob_x + w_mm / 2) ):.1f},{((rob_y + h_mm / 2)):.1f})'
 
-        print(blue)
+        # print(blue)
         
         blue_block = Block(blue_x, blue_y, blue_rotation, blue_is_detected)
         
@@ -331,22 +381,26 @@ def get_pos_angle():
                 x, y, w, h = cv2.boundingRect(contour)
 
                 # distance x, y is in mm, to compare distances, both x,y must be mm
-                x_mm = np.round(x / mm, decimals=2)
-                y_mm = np.round(y / mm, decimals=2)
-                w_mm = w / mm
-                h_mm = h / mm
+                # x_mm = np.round(x / mm, decimals=2)
+                # y_mm = np.round(y / mm, decimals=2)
+                # w_mm = w / mm
+                # h_mm = h / mm
 
                 
-                rob_x = x_mm + distance_x   
+                # rob_x = x_mm + distance_x   
 
-                # distance in y-axis from camera(0,0) to robot(0,0)
-                rob_y = y_mm + distance_y
+                # # distance in y-axis from camera(0,0) to robot(0,0)
+                # rob_y = y_mm + distance_y
+                
+                rob_x, rob_y = get_robot_xy(x, y, w, h, mm_x, mm_y, distance_x, distance_y)
+                
+                
 
                 frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
                 cv2.putText(frame, "Green Platform", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (50, 255, 0))
 
                 # display center coord
-                cv2.putText(frame, f'({((rob_x + w_mm / 2)):.1f},{((rob_y + h_mm / 2)):.1f})', (x + int(w / 2), y + int(h / 2)),
+                cv2.putText(frame, f'({((rob_x )):.1f},{((rob_y )):.1f})', (x + int(w / 2), y + int(h / 2)),
                             cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.5, (0, 0, 0))
                 # dot in center
                 cv2.circle(frame, (x + int(w / 2), y + int(h / 2)), 4, (0, 0, 0), -1)
@@ -356,8 +410,8 @@ def get_pos_angle():
                 green_rotation = rot_angle
 
             # INFO DISPLAYED IN CONSOLE
-            green = f'Green platform center coord:({((rob_x + w_mm / 2)):.1f},{((y + h_mm / 2)):.1f})'
-            print(green)
+            # green = f'Green platform center coord:({((rob_x + w_mm / 2)):.1f},{((y + h_mm / 2)):.1f})'
+            # print(green)
             
             green_block = Block(green_x, green_y, green_rotation, green_is_detected)
         

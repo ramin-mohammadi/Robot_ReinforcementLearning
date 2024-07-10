@@ -14,8 +14,7 @@ from FactoryRobotArm import xArmClass
 import obj_det_xyz_angle
 
 
-
-# FIRST GOAL get robot arm to go to detected location from camera, then can enhance to move object to a locaiton after picking it up and other more complicated tasks
+# IMPORTANT: POSSIBLY CAN IMPLEMENT CONTROL FREQUENCY WITH time.sleep() at the end of a step()
 
 class xArmEnv(gym.Env): 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
@@ -40,12 +39,20 @@ class xArmEnv(gym.Env):
         # THERE ARE DIFFERENT BOUNDARY VALUES for the smaller and bigger arms (LOOK at their manuals appendix which are the last few pages)
         
         # AGENT: xArm 5 (big arm)
-        self.agent_x_low = -700
-        self.agent_x_high = 700
-        self.agent_y_low = -700
-        self.agent_y_high = 700
-        self.agent_z_low = 0
-        self.agent_z_high = 950
+        
+        self.agent_x_vel_low = -10
+        self.agent_x_vel_high = 10
+        self.agent_y_vel_low = -10
+        self.agent_y_vel_high = 10
+        self.agent_z_vel_low = -10
+        self.agent_z_vel_high = 10
+        
+        self.agent_x_low = -85
+        self.agent_x_high = 270
+        self.agent_y_low = 185
+        self.agent_y_high = 365
+        self.agent_z_low = 143
+        self.agent_z_high = 290
         
         self.agent_roll_pitch_yaw_low = -180
         self.agent_roll_pitch_yaw_high = 180
@@ -62,12 +69,12 @@ class xArmEnv(gym.Env):
         self.agent_joint5_high = 360
         
         # TARGET: object on conveyor belt
-        self.target_x_low = -300
-        self.target_x_high = 300
-        self.target_y_low = -400
-        self.target_y_high = 400        
-        self.target_z_low = 0
-        self.target_z_high = 400
+        self.target_x_low = -85 #-300
+        self.target_x_high = 270 #300
+        self.target_y_low = 185 #-400
+        self.target_y_high = 365 # 400  
+        self.target_z_low = 143 # 0
+        self.target_z_high = 290 # 400        
         
         # SIMPLE EXAMPLE:
         # self.target_x_low = -3
@@ -91,13 +98,13 @@ class xArmEnv(gym.Env):
         # STATES should also be placed in the observation space for model to learn from
         self.observation_space = spaces.Dict( # later may have to account for observing if other arms are moving???
             {
-                "agent" : spaces.Box(low=np.array([self.agent_x_low, self.agent_y_low, self.agent_z_low, self.agent_roll_pitch_yaw_low, self.agent_roll_pitch_yaw_low, self.agent_roll_pitch_yaw_low, self.agent_joint1_low, self.agent_joint2_low, self.agent_joint3_low, self.agent_joint4_low, self.agent_joint5_low]), 
-                high=np.array([self.agent_x_high, self.agent_y_high, self.agent_z_high, self.agent_roll_pitch_yaw_high, self.agent_roll_pitch_yaw_high, self.agent_roll_pitch_yaw_high,self.agent_joint1_high, self.agent_joint2_high, self.agent_joint3_high, self.agent_joint4_high, self.agent_joint5_high]), 
-                                        shape=(11,), dtype=np.float64), 
+                "agent" : spaces.Box(low=np.array([self.agent_x_low, self.agent_y_low, self.agent_z_low, self.agent_roll_pitch_yaw_low, self.agent_roll_pitch_yaw_low, self.agent_roll_pitch_yaw_low, self.agent_joint1_low, self.agent_joint2_low, self.agent_joint3_low, self.agent_joint4_low, self.agent_joint5_low, self.agent_x_vel_low, self.agent_y_vel_low, self.agent_z_vel_low]), 
+                                     high=np.array([self.agent_x_high, self.agent_y_high, self.agent_z_high, self.agent_roll_pitch_yaw_high, self.agent_roll_pitch_yaw_high, self.agent_roll_pitch_yaw_high,self.agent_joint1_high, self.agent_joint2_high, self.agent_joint3_high, self.agent_joint4_high, self.agent_joint5_high, self.agent_x_vel_high, self.agent_y_vel_high, self.agent_z_vel_high]), 
+                                     shape=(14,), dtype=np.float32), 
                 # the z axis is needed for the target to help guide the agent's z position to the target's -> But PROBLEM here bc z pos is the attachment point of the gripper, not the tip of the gripper -> assume z is static (figure out beforehand)
                 "target" : spaces.Box(low=np.array([self.target_x_low, self.target_y_low, self.target_z_low]), 
-                                        high=np.array([self.target_x_high, self.target_y_high, self.target_z_high]), 
-                                        shape=(3,), dtype=np.float64),
+                                      high=np.array([self.target_x_high, self.target_y_high, self.target_z_high]), 
+                                      shape=(3,), dtype=np.float32),
                 "gripper_state": spaces.Discrete(2), # {0,1}  , 1 if open 0 if closed
                 "grabbed_target": spaces.Discrete(2), # {0,1}  , 1 if picked up 0 otherwise/dropped block
                 "arm_reached_target": spaces.Discrete(2), # {0,1}  , 1 if arm reached target 0 otherwise
@@ -112,8 +119,19 @@ class xArmEnv(gym.Env):
         
         
         # # xArm
-        self.action_space = spaces.Discrete(4)
-        # self.action_space = spaces.Box(low=np.array([0]), high=np.array([4]), dtype=int)
+        #self.action_space = spaces.Discrete(4)
+
+        
+        self.action_space = spaces.Dict(
+            { 
+                # movement (position) along x, y, and z axes
+                "continuous": spaces.Box(low=np.array([self.agent_x_vel_low, self.agent_y_vel_low, self.agent_z_vel_low,]),
+                                         high=np.array([self.agent_x_vel_high, self.agent_y_vel_high, self.agent_z_vel_high,],
+                                                     shape=(3,), dtype=np.float32)),
+                # gripper control simplified to just open or closed
+                "gripper" : spaces.Discrete(2) #{0, 1} , 1 if open, 0 if closed
+            }
+        )
         
         
 
@@ -152,7 +170,7 @@ class xArmEnv(gym.Env):
         # self._agent_position = np.array([2,-1,5, -99999,0,-91.5, 93.8,-58.8,5.2,53.6,185.3]) # [x,y,z, roll,pitch,yaw, J1,J2,J3,J4,J5]
         
         # move robot to initial position
-        self._agent_position = np.array([0,0,0,0,0,0,0,0,0,0,0], dtype=float) # dummy values just to initialize _agent_position
+        self._agent_position = np.array([0,0,0,0,0,0,0,0,0,0,0, 0, 0, 0], dtype=float) # dummy values just to initialize _agent_position
         self.robot_main.move_initial()
         # self.update_agent_position()
         self._agent_position[0:6] = self.robot_main._arm.get_position()[1] # [x,y,z,roll,pitch,yaw]
@@ -176,7 +194,10 @@ class xArmEnv(gym.Env):
         self._destination_position = np.array([211, 113.6, 268.7])
         
 
-        self.state_last_action = -1
+        self.state_last_action = { # -1
+            "continuous": np.array([0,0,0], dtype=float),
+            "gripper": 1
+        }
         # if agent at target and robot closed gripper
         self.state_grabbed_target = 0 # if true (1), target position will be updated with agent's position
         self.state_target_reached_destination = 0
@@ -187,7 +208,29 @@ class xArmEnv(gym.Env):
         self.prev_agent_target_distance = 99999999
         self.prev_target_dest_distance = 99999999
         
-        self.historical_actions = np.array([-1,-1,-1,-1,-1])
+        # 5 previous actions
+        self.historical_actions = np.array([ 
+            { 
+            "continuous": np.array([0,0,0], dtype=float),
+            "gripper": 1
+            },
+            { 
+            "continuous": np.array([0,0,0], dtype=float),
+            "gripper": 1
+            },
+            { 
+                "continuous": np.array([0,0,0], dtype=float),
+                "gripper": 1
+            },
+            {  
+                "continuous": np.array([0,0,0], dtype=float),
+                "gripper": 1
+            },
+            { 
+                "continuous": np.array([0,0,0], dtype=float),
+                "gripper": 1
+            }
+        ])
 
         observation = self._get_obs()
         info = self._get_info()
@@ -205,7 +248,7 @@ class xArmEnv(gym.Env):
         
         
 
-        
+        '''
         # action dictionary has to be defined here bc upon every step/action, the displacement changes so dictionary action must be reinitialized
         # self._actions_dict = {
         #     0: np.array([self._get_x_displacement(),0,0, 0,0,0, 0,0,0,0,0]), # x displacement
@@ -224,58 +267,97 @@ class xArmEnv(gym.Env):
         
         
         
-        if action == 0:
-            yaw_rotation = -91.5
+        # Old Discrete Actions
+        # if action == 0:
+        #     yaw_rotation = -91.5
 
-            # connect to camera that performs object detection (detects red or blue) to get x,y, and yaw degree rotation
-            camera_info = self.get_xy_rotation_block() # returns [x,y, yaw degree rotation]
-            self._target_position[0:2] = camera_info[0:2]
-            yaw_rotation = camera_info[2]
+        #     # connect to camera that performs object detection (detects red or blue) to get x,y, and yaw degree rotation
+        #     camera_info = self.get_xy_rotation_block() # returns [x,y, yaw degree rotation]
+        #     self._target_position[0:2] = camera_info[0:2]
+        #     yaw_rotation = camera_info[2]
             
-            self.robot_main.move_to(self._target_position, yaw_rotation)
-        elif action == 1:
-            yaw_rotation = -91.5
-            self.robot_main.move_to(self._destination_position, -91.5)
-        elif action == 2:
-            self.robot_main.close_gripper()
-            self.gripper_state = 0
-        elif action == 3:
+        #     self.robot_main.move_to(self._target_position, yaw_rotation)
+        # elif action == 1:
+        #     yaw_rotation = -91.5
+        #     self.robot_main.move_to(self._destination_position, -91.5)
+        # elif action == 2:
+        #     self.robot_main.close_gripper()
+        #     self.gripper_state = 0
+        # elif action == 3:
+        #     self.robot_main.open_gripper()
+        #     self.gripper_state = 1
+        # '''
+        
+        # New Action Space
+        # move to x y z that policy chose
+        # self.robot_main.move_to(action["continuous"], yaw_rotation=-90) 
+
+        # gripper: 1 is open, 0 is close
+        if action["gripper"] == 1:
             self.robot_main.open_gripper()
             self.gripper_state = 1
+        elif action["gripper"] == 0:
+            self.robot_main.close_gripper()
+            self.gripper_state = 0
+
+        # set robot velocity x y z using continuous action space that policy picked
+        self.robot_main.action_velocity(x_velocity=action['continuous'][0], 
+                                        y_velocity=action['continuous'][1], 
+                                        z_velocity=action['continuous'][2], 
+                                        duration=1.5) # 1.5 seconds
+        
+        # to update observation for velocity x y z
+        self._agent_position[11:14] = [action['continuous'][0], action['continuous'][1], action['continuous'][2]] 
             
             
-        print("Action: ", action)
+        print("Action:")
+        print(" Velocities  (x, y, z): ", action["continuous"])
+        print("   Gripper: ", "Open" if self.gripper_state == 1 else "Closed")
+        
         print("Last Action: ", self.state_last_action)
+        print("   Velocities (x, y, z): ", self.state_last_action["continuous"])
+        print("   Gripper: ", "Open" if self.state_last_action["gripper"] == 1 else "Closed")
         
         
-        
-        # THIS BRANCH is still BUGGY -> may say target reached the destination when the grippers were open when moving to the destination
-        # if agent at target and robot closed gripper, update target position with agent's position (robot is holding block)
-        if(np.array_equal(self._agent_position[0:3], self._target_position) and self.gripper_state == 0):
-            self.state_grabbed_target = 1
-        # robot chose to open gripper while it was previously holding target
-        # elif(np.array_equal(self._agent_position[0:3], self._target_position) and self.state_last_action == 3): 
-        if(self.gripper_state == 1): # anytime the gripper is opened assume not going to be updating target position anymore
-            self.state_grabbed_target = 0
-        
-        print("STATE CHECKPOINT: ", self.state_grabbed_target)
-
-        
-
-        
-        # update agent position by getting robot's current coordinates after move
+        # update agent position by getting robot's current coordinates, rotation ,and joints after move
         # self.update_agent_position()
         self._agent_position[0:6] = self.robot_main._arm.get_position()[1] # [x,y,z,roll,pitch,yaw]
         self._agent_position[6:11] = self.robot_main._arm.get_servo_angle()[1][0:5] # 5 joint angles
-        
+
         # round to first decimal bc precision for get_position is to the 7th decimal so agent pos never equals target pos
         self._agent_position[0:3] = np.round(self._agent_position[0:3], decimals=1) 
         
+        
+        xy_error = 5 # mm in x and y directions for agent to have reached target
+        z_max = 151 # max z-coordinate value for block grabbing
+        
+        # arm has to be within xy_error mm in x and y from the target's x y, and within robot z: (143 -> 151 mm) to have reached the target 
+        if(abs(self._agent_position[0]-self._target_position[0]) <= xy_error and
+           abs(self._agent_position[1]-self._target_position[1]) <= xy_error and
+           self.target_z_low <= self._target_position[2] <= z_max):
+           # 1 = true
+           self.state_arm_reached_target = 1
+
+           # check to see if gripper closed when arm is at target position
+           if self.gripper_state == 0: # 0 = closed
+                self.state_grabbed_target = 1
+        
+        if(self.gripper_state == 1): # anytime the gripper is opened assume not going to be updating target position anymore
+            self.state_grabbed_target = 0
+    
+        # # if agent at target and robot closed gripper, update target position with agent's position (robot is holding block)
+        # if(np.array_equal(self._agent_position[0:3], self._target_position) and self.gripper_state == 0):
+        #     self.state_grabbed_target = 1
+        # robot chose to open gripper while it was previously holding target
+        # elif(np.array_equal(self._agent_position[0:3], self._target_position) and self.state_last_action == 3):
+         
+        print("STATE CHECKPOINT: ", self.state_grabbed_target)
 
         print("AGENT: ", self._agent_position)
         
         # print("TARGET: ", self._target_position)        
 
+        # This assumes that the robot is holding the block so update the target position with the robot's
         if self.state_grabbed_target == 1 and self.gripper_state == 0:
             # DO NOT DO BELOW cause target variable will now point to the agent pos address so when agent pos is updated, so is target:
             # self._target_position = self._agent_position[0:3] 
@@ -284,7 +366,8 @@ class xArmEnv(gym.Env):
 
         print("TARGET: ", self._target_position)        
    
-        
+   
+        '''
         # Avoid out of bounds by truncating to upper/lower limit
         if self._agent_position[0] < self.agent_x_low:
             self._agent_position[0] = self.agent_x_low
@@ -336,21 +419,11 @@ class xArmEnv(gym.Env):
             self._agent_position[10] = self.agent_joint5_low
         elif self._agent_position[10] > self.agent_joint5_high:
             self._agent_position[10] = self.agent_joint5_high
+        '''
         
-        
-        # IMPORTANT: I NEED to account that moving joints will also move the robot's xyz 
-        # -> set_servo_angle() is called for the joint motion command, maybe afterward, call get_position() ? -> xArm python SDK
 
         
-        # maybe here, if action is within a certain range, perform the needed robot command
-        # ex: 0 < action < 78 would be passing the first 6 values in self._agent_position to the code to perform a linear motion command for robot
-        # > 78 would be joint motion code to perform  
-        
-        # An episode is done iff the agent has reached the target
         # CHANGE LATER: account if chosen movement resulted in robot error getting stuck, going out of bounds, colliding, speed too fast? etc
-        # z_offset = 0 # offset z bc the z of the agent should be more than the target since agent's z is not at tip of gripper
-        # terminated = np.array_equal(self._agent_position[0:3] , self._target_position + [0,0,z_offset])  
-        # reward = 1 if terminated else 0  # Binary sparse rewards (FOR NOW, CHANGE LATER and make a CUSTOM REWARD SYSTEM)
         
         terminated = np.array_equal(self._target_position, self._destination_position)  
         # print("Terminated: ", terminated)

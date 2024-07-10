@@ -82,6 +82,38 @@ class RobotMain(object):
             return self._arm.state < 4
         else:
             return False
+        
+    def action_velocity(self, x_velocity, y_velocity, z_velocity, duration=1.5):
+         # https://github.com/xArm-Developer/xArm-Python-SDK
+            # def vc_set_cartesian_velocity(self, speeds, is_radian=None, is_tool_coord=False, duration=-1, **kwargs):
+            # https://github.com/xArm-Developer/xArm-Python-SDK/blob/master/example/wrapper/common/1009-cartesian_velocity_control.py
+            # [spd_x, spd_y, spd_z, spd_rx, spd_ry, spd_rz]
+        '''
+        def vc_set_cartesian_velocity(self, speeds, is_radian=None, is_tool_coord=False, duration=-1, **kwargs):
+            Cartesian velocity control, need to be set to cartesian velocity control mode(self.set_mode(5))
+            Note:
+                1. only available if firmware_version >= 1.6.9
+            
+            :param speeds: [spd_x, spd_y, spd_z, spd_rx, spd_ry, spd_rz]
+            :param is_radian: the spd_rx/spd_ry/spd_rz in radians or not, default is self.default_is_radian
+            :param is_tool_coord: is tool coordinate or not, default is False
+            :param duration: the maximum duration of the speed, over this time will automatically set the speed to 0
+                Note: only available if firmware_version >= 1.8.0
+                duration > 0: seconds, indicates the maximum number of seconds that this speed can be maintained
+                duration == 0: Always effective, will not stop automatically
+                duration < 0: default value, only used to be compatible with the old protocol, equivalent to 0
+            :return: code
+                code: See the API Code Documentation for details.
+        '''
+        
+        # NOTE: set_mode(5) for cartesian velocity mode
+        self._arm.set_mode(5)
+        self._arm.set_state(0) # declares robot to be in motion ("sport" -> neither paused nor stopped state)
+        code = self._arm.vc_set_cartesian_velocity(speeds=[x_velocity, y_velocity, z_velocity, 0, 0, 0], duration=duration)
+        if not self._check_code(code, 'vc_set_cartesian_velocity'):
+            return
+        
+        # time.sleep(5) # sleep 5 seconds
 
     # Robot Main Run
     def run(self):
@@ -342,7 +374,7 @@ class RobotMain(object):
                 return
             
             # xyz roll pitch yaw
-            code = self._arm.set_position(*[-12.1, 181.6, 222.3, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            code = self._arm.set_position(*[-12.1, 181.6, 222.3, 180.0, 0.0, -90], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
             if not self._check_code(code, 'set_position'):
                 return
             

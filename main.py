@@ -96,6 +96,8 @@ class RobotMain(object):
             self._angle_speed = 30
             self._angle_acc = 200
             code = self._arm.set_tcp_load(0.82, [0, 0, 48])
+            if not self._check_code(code, 'set_tcp_load'):
+                return
             
             print("test")
             print(self._arm.get_position()[1][0:3]) # how to get robot's xyz
@@ -103,133 +105,171 @@ class RobotMain(object):
             print(self._arm.get_servo_angle()[1]) # pay attention to only 5 first values bc xarm5 only has 5 joints
 
             # return
-        
-        
-            if not self._check_code(code, 'set_tcp_load'):
+            
+            
+            # https://github.com/xArm-Developer/xArm-Python-SDK
+            # def vc_set_cartesian_velocity(self, speeds, is_radian=None, is_tool_coord=False, duration=-1, **kwargs):
+            # https://github.com/xArm-Developer/xArm-Python-SDK/blob/master/example/wrapper/common/1009-cartesian_velocity_control.py
+            # [spd_x, spd_y, spd_z, spd_rx, spd_ry, spd_rz]
+            '''
+            def vc_set_cartesian_velocity(self, speeds, is_radian=None, is_tool_coord=False, duration=-1, **kwargs):
+                Cartesian velocity control, need to be set to cartesian velocity control mode(self.set_mode(5))
+                Note:
+                    1. only available if firmware_version >= 1.6.9
+                
+                :param speeds: [spd_x, spd_y, spd_z, spd_rx, spd_ry, spd_rz]
+                :param is_radian: the spd_rx/spd_ry/spd_rz in radians or not, default is self.default_is_radian
+                :param is_tool_coord: is tool coordinate or not, default is False
+                :param duration: the maximum duration of the speed, over this time will automatically set the speed to 0
+                    Note: only available if firmware_version >= 1.8.0
+                    duration > 0: seconds, indicates the maximum number of seconds that this speed can be maintained
+                    duration == 0: Always effective, will not stop automatically
+                    duration < 0: default value, only used to be compatible with the old protocol, equivalent to 0
+                :return: code
+                    code: See the API Code Documentation for details.
+            '''
+            
+            # NOTE: set_mode(5) for cartesian velocity mode
+            self._arm.set_mode(5)
+            self._arm.set_state(0) # declares robot to be in motion ("sport" -> not paused nor stopped state)
+            code = self._arm.vc_set_cartesian_velocity(speeds=[10, 10, 10, 0, 0, 0], duration=5)
+            if not self._check_code(code, 'vc_set_cartesian_velocity'):
                 return
-            code = self._arm.set_gripper_position(50, wait=True, speed=2500, auto_enable=True)
-            if not self._check_code(code, 'set_gripper_position'):
-                return
-            code = self._arm.set_servo_angle(angle=[93.8, -58.8, 5.2, 53.6, 185.3], speed=self._angle_speed, mvacc=self._angle_acc, wait=True, radius=-1.0)
-            if not self._check_code(code, 'set_servo_angle'):
-                return
-            code = self._arm.set_servo_angle(angle=[89.0, -32.4, -17.4, 49.8, 180.5], speed=self._angle_speed, mvacc=self._angle_acc, wait=False, radius=-1.0)
-            if not self._check_code(code, 'set_servo_angle'):
-                return
-            code = self._arm.set_gripper_position(376, wait=True, speed=2500, auto_enable=True)
-            if not self._check_code(code, 'set_gripper_position'):
-                return
-            code = self._arm.set_position(*[1.9, 281.3, 142.9, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_pause_time(1)
-            if not self._check_code(code, 'set_pause_time'):
-                return
-            code = self._arm.set_gripper_position(285, wait=True, speed=5000, auto_enable=True)
-            if not self._check_code(code, 'set_gripper_position'):
-                return
-            code = self._arm.set_pause_time(1)
-            if not self._check_code(code, 'set_pause_time'):
-                return
-            code = self._arm.set_position(*[1.9, 281.3, 254.7, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_position(*[211.3, 112.4, 238.1, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_position(*[214.3, 112.4, 217.4, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_pause_time(1)
-            if not self._check_code(code, 'set_pause_time'):
-                return
-            code = self._arm.set_gripper_position(448, wait=True, speed=2500, auto_enable=True)
-            if not self._check_code(code, 'set_gripper_position'):
-                return
-            code = self._arm.set_position(*[213.3, 112.4, 281.2, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_position(*[-0.5, 352.4, 250.2, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_position(*[-0.5, 352.4, 141.2, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_pause_time(1)
-            if not self._check_code(code, 'set_pause_time'):
-                return
-            code = self._arm.set_gripper_position(285, wait=True, speed=5000, auto_enable=True)
-            if not self._check_code(code, 'set_gripper_position'):
-                return
-            code = self._arm.set_pause_time(1)
-            if not self._check_code(code, 'set_pause_time'):
-                return
-            code = self._arm.set_position(*[-0.5, 352.4, 238.5, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_position(*[214.8, 112.6, 249.3, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_position(*[215.8, 112.6, 236.3, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_pause_time(1)
-            if not self._check_code(code, 'set_pause_time'):
-                return
-            code = self._arm.set_gripper_position(459, wait=True, speed=5000, auto_enable=True)
-            if not self._check_code(code, 'set_gripper_position'):
-                return
-            code = self._arm.set_position(*[214.8, 112.6, 265.4, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_gripper_position(44, wait=True, speed=5000, auto_enable=True)
-            if not self._check_code(code, 'set_gripper_position'):
-                return
-            code = self._arm.set_pause_time(1)
-            if not self._check_code(code, 'set_pause_time'):
-                return
-            code = self._arm.set_position(*[205.0, 112.6, 252.0, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_position(*[205.0, 112.6, 256.0, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_position(*[219.0, 112.6, 257.0, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_pause_time(1)
-            if not self._check_code(code, 'set_pause_time'):
-                return
-            code = self._arm.set_position(*[219.0, 112.6, 251.0, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_position(*[219.0, 112.6, 258.0, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_pause_time(1)
-            if not self._check_code(code, 'set_pause_time'):
-                return
-            code = self._arm.set_servo_angle(angle=[28.1, -38.6, -9.9, 48.5, 31.4], speed=self._angle_speed, mvacc=self._angle_acc, wait=True, radius=-1.0)
-            if not self._check_code(code, 'set_servo_angle'):
-                return
-            code = self._arm.set_pause_time(1)
-            if not self._check_code(code, 'set_pause_time'):
-                return
-            code = self._arm.set_position(*[219.0, 117.2, 252.0, 180.0, 0.0, -3.3], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_pause_time(1)
-            if not self._check_code(code, 'set_pause_time'):
-                return
-            code = self._arm.set_position(*[219.0, 117.2, 271.2, 180.0, 0.0, -3.3], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_position(*[211.0, 113.6, 268.7, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=False)
-            if not self._check_code(code, 'set_position'):
-                return
-            code = self._arm.set_servo_angle(angle=[93.8, -58.8, 5.2, 53.6, 185.3], speed=self._angle_speed, mvacc=self._angle_acc, wait=True, radius=-1.0)
-            if not self._check_code(code, 'set_servo_angle'):
-                return
+            
+            time.sleep(5) # sleep 5 seconds
+            
+            
+            print("test")
+            # xyz, roll pitch yaw and joint values
+            print(self._arm.get_position()[1][0:3]) # how to get robot's xyz
+            print(self._arm.get_position()[1]) # [x,y,z,roll,pitch,yaw]
+            print(self._arm.get_servo_angle()[1]) # pay attention to only 5 first values bc xarm5 only has 5 joints
+
+            
+            
+            # code = self._arm.set_gripper_position(50, wait=True, speed=2500, auto_enable=True)
+            # if not self._check_code(code, 'set_gripper_position'):
+            #     return
+            # code = self._arm.set_servo_angle(angle=[93.8, -58.8, 5.2, 53.6, 185.3], speed=self._angle_speed, mvacc=self._angle_acc, wait=True, radius=-1.0)
+            # if not self._check_code(code, 'set_servo_angle'):
+            #     return
+            # code = self._arm.set_servo_angle(angle=[89.0, -32.4, -17.4, 49.8, 180.5], speed=self._angle_speed, mvacc=self._angle_acc, wait=False, radius=-1.0)
+            # if not self._check_code(code, 'set_servo_angle'):
+            #     return
+            # code = self._arm.set_gripper_position(376, wait=True, speed=2500, auto_enable=True)
+            # if not self._check_code(code, 'set_gripper_position'):
+            #     return
+            # code = self._arm.set_position(*[1.9, 281.3, 142.9, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            # if not self._check_code(code, 'set_position'):
+            #     return
+            # code = self._arm.set_pause_time(1)
+            # if not self._check_code(code, 'set_pause_time'):
+            #     return
+            # code = self._arm.set_gripper_position(285, wait=True, speed=5000, auto_enable=True)
+            # if not self._check_code(code, 'set_gripper_position'):
+            #     return
+            # code = self._arm.set_pause_time(1)
+            # if not self._check_code(code, 'set_pause_time'):
+            #     return
+            # code = self._arm.set_position(*[1.9, 281.3, 254.7, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            # if not self._check_code(code, 'set_position'):
+            #     return
+            # code = self._arm.set_position(*[211.3, 112.4, 238.1, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            # if not self._check_code(code, 'set_position'):
+            #     return
+            # code = self._arm.set_position(*[214.3, 112.4, 217.4, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            # if not self._check_code(code, 'set_position'):
+            #     return
+            # code = self._arm.set_pause_time(1)
+            # if not self._check_code(code, 'set_pause_time'):
+            #     return
+            # code = self._arm.set_gripper_position(448, wait=True, speed=2500, auto_enable=True)
+            # if not self._check_code(code, 'set_gripper_position'):
+            #     return
+            # code = self._arm.set_position(*[213.3, 112.4, 281.2, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            # if not self._check_code(code, 'set_position'):
+            #     return
+            # code = self._arm.set_position(*[-0.5, 352.4, 250.2, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            # if not self._check_code(code, 'set_position'):
+            #     return
+            # code = self._arm.set_position(*[-0.5, 352.4, 141.2, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            # if not self._check_code(code, 'set_position'):
+            #     return
+            # code = self._arm.set_pause_time(1)
+            # if not self._check_code(code, 'set_pause_time'):
+            #     return
+            # code = self._arm.set_gripper_position(285, wait=True, speed=5000, auto_enable=True)
+            # if not self._check_code(code, 'set_gripper_position'):
+            #     return
+            # code = self._arm.set_pause_time(1)
+            # if not self._check_code(code, 'set_pause_time'):
+            #     return
+            # code = self._arm.set_position(*[-0.5, 352.4, 238.5, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            # if not self._check_code(code, 'set_position'):
+            #     return
+            # code = self._arm.set_position(*[214.8, 112.6, 249.3, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            # if not self._check_code(code, 'set_position'):
+            #     return
+            # code = self._arm.set_position(*[215.8, 112.6, 236.3, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            # if not self._check_code(code, 'set_position'):
+            #     return
+            # code = self._arm.set_pause_time(1)
+            # if not self._check_code(code, 'set_pause_time'):
+            #     return
+            # code = self._arm.set_gripper_position(459, wait=True, speed=5000, auto_enable=True)
+            # if not self._check_code(code, 'set_gripper_position'):
+            #     return
+            # code = self._arm.set_position(*[214.8, 112.6, 265.4, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            # if not self._check_code(code, 'set_position'):
+            #     return
+            # code = self._arm.set_gripper_position(44, wait=True, speed=5000, auto_enable=True)
+            # if not self._check_code(code, 'set_gripper_position'):
+            #     return
+            # code = self._arm.set_pause_time(1)
+            # if not self._check_code(code, 'set_pause_time'):
+            #     return
+            # code = self._arm.set_position(*[205.0, 112.6, 252.0, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            # if not self._check_code(code, 'set_position'):
+            #     return
+            # code = self._arm.set_position(*[205.0, 112.6, 256.0, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            # if not self._check_code(code, 'set_position'):
+            #     return
+            # code = self._arm.set_position(*[219.0, 112.6, 257.0, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            # if not self._check_code(code, 'set_position'):
+            #     return
+            # code = self._arm.set_pause_time(1)
+            # if not self._check_code(code, 'set_pause_time'):
+            #     return
+            # code = self._arm.set_position(*[219.0, 112.6, 251.0, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            # if not self._check_code(code, 'set_position'):
+            #     return
+            # code = self._arm.set_position(*[219.0, 112.6, 258.0, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            # if not self._check_code(code, 'set_position'):
+            #     return
+            # code = self._arm.set_pause_time(1)
+            # if not self._check_code(code, 'set_pause_time'):
+            #     return
+            # code = self._arm.set_servo_angle(angle=[28.1, -38.6, -9.9, 48.5, 31.4], speed=self._angle_speed, mvacc=self._angle_acc, wait=True, radius=-1.0)
+            # if not self._check_code(code, 'set_servo_angle'):
+            #     return
+            # code = self._arm.set_pause_time(1)
+            # if not self._check_code(code, 'set_pause_time'):
+            #     return
+            # code = self._arm.set_position(*[219.0, 117.2, 252.0, 180.0, 0.0, -3.3], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            # if not self._check_code(code, 'set_position'):
+            #     return
+            # code = self._arm.set_pause_time(1)
+            # if not self._check_code(code, 'set_pause_time'):
+            #     return
+            # code = self._arm.set_position(*[219.0, 117.2, 271.2, 180.0, 0.0, -3.3], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            # if not self._check_code(code, 'set_position'):
+            #     return
+            # code = self._arm.set_position(*[211.0, 113.6, 268.7, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=False)
+            # if not self._check_code(code, 'set_position'):
+            #     return
+            # code = self._arm.set_servo_angle(angle=[93.8, -58.8, 5.2, 53.6, 185.3], speed=self._angle_speed, mvacc=self._angle_acc, wait=True, radius=-1.0)
+            # if not self._check_code(code, 'set_servo_angle'):
+            #     return
         except Exception as e:
             self.pprint('MainException: {}'.format(e))
         self.alive = False
@@ -247,7 +287,7 @@ class RobotMain(object):
             code = self._arm.set_tcp_load(0.82, [0, 0, 48])
             if not self._check_code(code, 'set_tcp_load'):
                 return
-            code = self._arm.set_position(*[-12.1, 181.6, 222.3, 180.0, 0.0, -91.5], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
+            code = self._arm.set_position(*[-12.1, 181.6, 222.3, 180.0, 0.0, -90], speed=self._tcp_speed, mvacc=self._tcp_acc, radius=-1.0, wait=True)
             if not self._check_code(code, 'set_position'):
                 return
                 
@@ -262,6 +302,7 @@ class RobotMain(object):
         # self._arm.release_state_changed_callback(self._state_changed_callback)
         # if hasattr(self._arm, 'release_count_changed_callback'):
         #     self._arm.release_count_changed_callback(self._count_changed_callback)
+        
 
             
            
