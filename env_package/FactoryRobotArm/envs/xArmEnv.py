@@ -11,7 +11,7 @@ import plotly.graph_objects as go
 
 # directory to these local files is relative to the python package being the folder env_package
 from FactoryRobotArm import xArmClass
-import obj_det_xyz_angle
+# import obj_det_xyz_angle
 
 
 # IMPORTANT: POSSIBLY CAN IMPLEMENT CONTROL FREQUENCY WITH time.sleep() at the end of a step()
@@ -110,7 +110,8 @@ class xArmEnv(gym.Env):
                 "arm_reached_target": spaces.Discrete(2), # {0,1}  , 1 if arm reached target 0 otherwise
                 "target_reached_destination": spaces.Discrete(2), # {0,1}  , 1 if block reached destination 0 otherwise
                 "collision": spaces.Discrete(2), # {0,1}  , 1 if collision occurred 0 otherwise
-                "historical_actions": spaces.Box(low=-1, high=3, shape=(5,), dtype=int)  # 5 most recent actions (t-5, t-4, t-3, t-2, t-1)
+                "historical_actions": spaces.Box(low=-1, high=3, shape=(5,), dtype=int),  # 5 most recent actions (t-5, t-4, t-3, t-2, t-1)
+                "current_checkpoint": spaces.Discrete(3),
             }
         )
 
@@ -121,13 +122,13 @@ class xArmEnv(gym.Env):
         # # xArm
         #self.action_space = spaces.Discrete(4)
 
-        
+        # ACTON SPACE FOR PPO CANT BE A DICTIONARY
         self.action_space = spaces.Dict(
             { 
                 # movement (position) along x, y, and z axes
                 "continuous": spaces.Box(low=np.array([self.agent_x_vel_low, self.agent_y_vel_low, self.agent_z_vel_low,]),
-                                         high=np.array([self.agent_x_vel_high, self.agent_y_vel_high, self.agent_z_vel_high,],
-                                                     shape=(3,), dtype=np.float32)),
+                                         high=np.array([self.agent_x_vel_high, self.agent_y_vel_high, self.agent_z_vel_high,]),
+                                                     shape=(3,), dtype=np.float32),
                 # gripper control simplified to just open or closed
                 "gripper" : spaces.Discrete(2) #{0, 1} , 1 if open, 0 if closed
             }
@@ -180,6 +181,12 @@ class xArmEnv(gym.Env):
         self.robot_main.open_gripper()
         self.gripper_state = 1
         
+        
+        self.previous_checkpoint = 0
+        # 0: starting
+        # 1: gripper closed at the target (picked up block)
+        # 2: block at destination (final checkpoint)
+        self.current_checkpoint = 0  
         
         # ADD LATER: speed and gripper clamping width
 
@@ -246,6 +253,7 @@ class xArmEnv(gym.Env):
         """
         self.num_steps += 1
         
+        self.previous_checkpoint = self.current_checkpoint
         
 
         '''
@@ -337,13 +345,29 @@ class xArmEnv(gym.Env):
            self.target_z_low <= self._target_position[2] <= z_max):
            # 1 = true
            self.state_arm_reached_target = 1
+           
 
            # check to see if gripper closed when arm is at target position
            if self.gripper_state == 0: # 0 = closed
                 self.state_grabbed_target = 1
+                self.current_checkpoint = 1
         
-        if(self.gripper_state == 1): # anytime the gripper is opened assume not going to be updating target position anymore
+        z_max_dest = 231
+        # if gripper opens and is not in the destination nor target location
+        if(self.gripper_state == 1 and 
+           not (abs(self._agent_position[0]-self._target_position[0]) <= xy_error and
+                abs(self._agent_position[1]-self._target_position[1]) <= xy_error and
+                self.target_z_low <= self._target_position[2] <= z_max) and
+           not (abs(self._agent_position[0]-self._destination_position[0]) <= xy_error and
+                abs(self._agent_position[1]-self._destination_position[1]) <= xy_error and
+                self._destination_position[2] <= self._target_position[2] <= z_max_dest)):
             self.state_grabbed_target = 0
+            self.state_arm_reached_target = 0
+            self.current_checkpoint = 0
+ 
+        elif(self.gripper_state == 1): # anytime the gripper is opened assume not going to be updating target position anymore
+            self.state_grabbed_target = 0
+            self.current_checkpoint = 0
     
         # # if agent at target and robot closed gripper, update target position with agent's position (robot is holding block)
         # if(np.array_equal(self._agent_position[0:3], self._target_position) and self.gripper_state == 0):
@@ -425,21 +449,65 @@ class xArmEnv(gym.Env):
         
         # CHANGE LATER: account if chosen movement resulted in robot error getting stuck, going out of bounds, colliding, speed too fast? etc
         
-        terminated = np.array_equal(self._target_position, self._destination_position)  
+        #terminated = np.array_equal(self._target_position, self._destination_position)  
+        
+        # TERMINATION SUCCESS: if arm within destination area, target has reached destination
+        if (self.state_grabbed_target and
+            abs(self._agent_position[0]-self._destination_position[0]) <= xy_error and
+            abs(self._agent_position[1]-self._destination_position[1]) <= xy_error and
+            self._destination_position[2] <= self._target_position[2] <= z_max_dest):
+            self.state_target_reached_destination = 1
+            terminated = True
+            self.current_checkpoint = 2
+ 
         # print("Terminated: ", terminated)
         
         # END EPISODE if agent moves to the target with its gripper closed 
         # if(action == 0 and self.gripper_state == 0 and terminated == False):
         #     terminated = True
         
-        if np.array_equal(self._agent_position[0:3], self._target_position):
-            self.state_arm_reached_target = 1
-        else: self.state_arm_reached_target = 0
+        # if np.array_equal(self._agent_position[0:3], self._target_position):
+        #     self.state_arm_reached_target = 1
+        # else: self.state_arm_reached_target = 0
         
                 
         info = self._get_info()
+
+        ########################## REWARD SYSTEM ###############################
+
+        # Robot has not yet picked up block
+        if (self.current_checkpoint == 0 and 
+            self.state_arm_reached_target == 0): # not yet reached target
+            # reward is euclidean distance
+            reward = np.sqrt(((self._agent_position[0] - self._target_position[0]) ** 2) +
+                             ((self._agent_position[1] - self._target_position[1]) ** 2) + 
+                             ((self._agent_position[2] - self._target_position[2]) ** 2))
+            #if reward == 0: reward = 0.01 #-> should never reach this problem bc updating states above 
+            reward = 1 / np.round(reward, decimals=1) # bc we're rounding the x y z 's to the first decimal, max possible reward here is 10: 1/0.1
+       
+        # Robot has grabbed block, but is not at destination location
+        elif (self.state_arm_reached_target == 1 and
+              self.state_grabbed_target == 1 and
+              self.state_target_reached_destination == 0):     
+            # reward is euclidean distance
+            reward = np.sqrt(((self._agent_position[0] - self._destination_position[0]) ** 2) +
+                             ((self._agent_position[1] - self._destination_position[1]) ** 2) + 
+                             ((self._agent_position[2] - self._destination_position[2]) ** 2))
+            # if reward == 0: reward = 0.01 # -> should never reach here bc updating states above
+            reward = 1 / np.round(reward, decimals=1) 
         
-        # Reward System (think of it as trainging a dog with treats / no treats / punish for doing something 
+        # (Checkpoint 1) Robot is at target location, but has not picked it up
+        elif (self.current_checkpoint == 1 and 
+              self.previous_checkpoint == self.current_checkpoint-1): 
+            # 2nd condition ensures only receive checkpoint reward once, until checkpoint starts over to 0
+            reward = 2
+        # (Checkpoint 2, Final Checkpoint or END) Robot has block and is at destaination location
+        elif (self.current_checkpoint == 2 and 
+              self.previous_checkpoint == self.current_checkpoint-1):
+            reward = 10
+        
+        ''' OLD REWARD SYSTEM
+        # Reward System (think of it as training a dog with treats / no treats / punish for doing something 
         # -> ALSO making sure agent is not convinving itself to do something that is not ideal)
         # PROBLEM: model sometimes get stuck repeating an action even with punishment but at some point broke out of it
         # PROBLEM: with my current dense reward system, model convinced itself that within an episode it can rack up more reward from constantly going back and forth to target position then at the end finally choose to pick up the block and move to destination to maximize reward
@@ -506,18 +574,12 @@ class xArmEnv(gym.Env):
         # IMPORTANT EXPERIMENT: I would provide a reward of 1 if it was what i wanted and otherwise -1, this lead to the robot at 
         # a new episode pick the ideal path sequentially: actions: 0,2,1
         # reward = input("Provide a reward for this action: ")
+        '''
             
         print("Reward: ", reward)
         
-        
-        
         # self.prev_agent_target_distance = info["distance_a_t"]
         # self.prev_target_dest_distance = info["distance_t_d"]
-        
-        
-        
-        
-        
         
         self.state_last_action = action
         
@@ -540,7 +602,7 @@ class xArmEnv(gym.Env):
         #     2: np.array([0,0,self._get_z_displacement(), 0,0,0, 0,0,0,0,0]), # z displacement
         # }
 
-        return observation, reward, terminated, False, info # WHAT does the False represent
+        return observation, reward, terminated, False, info # WHAT does the False represent (truncated)
     
     
     # pybullet?
@@ -581,7 +643,8 @@ class xArmEnv(gym.Env):
     def _get_obs(self):
          return {"agent": np.round(self._agent_position, decimals=1) , "target": np.round(self._target_position, decimals=1), 
                  "gripper_state": self.gripper_state, "historical_actions": self.historical_actions, "grabbed_target": self.state_grabbed_target,
-                 "target_reached_destination": self.state_target_reached_destination, "collision": self.state_collision, "arm_reached_target": self.state_arm_reached_target}
+                 "target_reached_destination": self.state_target_reached_destination, "collision": self.state_collision, "arm_reached_target": self.state_arm_reached_target,
+                 "current_checkpoint": self.current_checkpoint}
     
     # distance between 2 points in 3D space (agent's and target's xyz positions)
     def _get_info(self):
@@ -607,7 +670,7 @@ class xArmEnv(gym.Env):
         self._agent_position[6:11] = self.robot_main._arm.get_servo_angle()[1][0:5] # 5 joint angles
     
     # update history of 5 most recent actions
-    def update_historical_actions(self, action: int):
+    def update_historical_actions(self, action: dict):
         # t = current time step
         # self.historical_actions = [t-5, t-4, t-3, t-2, t-1]
         temp_1 = -1
