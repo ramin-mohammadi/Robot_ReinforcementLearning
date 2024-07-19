@@ -32,6 +32,7 @@ class xArmEnv(gym.Env):
         
         
         self.num_steps = 0
+        self.episode_length = 300
         # Bound: grid workspace (3D plane xyz) of conveyor belt??? -> possibly not true because the location of the robots are not in the conveyor belt grid
         # solution is to assume from the vertex (0,0,0) that me and Brian chose, the bounds is the entire robot working field? Or each robot will get a unique bound being how far they can reach in all directions
         # units is millimeters
@@ -138,19 +139,6 @@ class xArmEnv(gym.Env):
                 "current_checkpoint": spaces.Discrete(3),
             }
         )
-
-        ''' ACTON SPACE FOR PPO CANT BE A DICTIONARY
-        self.action_space = spaces.Dict(
-            { 
-                # movement (position) along x, y, and z axes
-                "continuous": spaces.Box(low=np.array([self.agent_x_vel_low, self.agent_y_vel_low, self.agent_z_vel_low,]),
-                                         high=np.array([self.agent_x_vel_high, self.agent_y_vel_high, self.agent_z_vel_high,]),
-                                                     shape=(3,), dtype=np.float32),
-                # gripper control simplified to just open or closed
-                "gripper" : spaces.Discrete(2) #{0, 1} , 1 if open, 0 if closed
-            }
-        )
-        '''
         
         # Continuous actions: [x-velocity, y-velocity, z-velocity, gripper state]
         # NOTE: gripper state >= 0 is open, gripper state < 0 is closed
@@ -191,10 +179,6 @@ class xArmEnv(gym.Env):
         
         # xArm: Agent's initial values will be static based off of values at initial position set on the arm
         # self._agent_position = np.array([-12.1,181.6,222.3, 180,0,-91.5, 93.8,-58.8,5.2,53.6,185.3]) # [x,y,z, roll,pitch,yaw, J1,J2,J3,J4,J5]
-        
-        
-        # SIMPLE EXAMPLE:
-        # self._agent_position = np.array([2,-1,5, -99999,0,-91.5, 93.8,-58.8,5.2,53.6,185.3]) # [x,y,z, roll,pitch,yaw, J1,J2,J3,J4,J5]
         
         # move robot to initial position
         self._agent_position = np.array([0,0,0,0,0,0,0,0,0,0,0,0,0,0], dtype=float) # dummy values just to initialize _agent_position
@@ -280,29 +264,13 @@ class xArmEnv(gym.Env):
         #     1: np.array([0,self._get_y_displacement(),0, 0,0,0, 0,0,0,0,0]), # y displacement
         #     2: np.array([0,0,self._get_z_displacement(), 0,0,0, 0,0,0,0,0]), # z displacement
         # }
-        
-        #xArm , FOR SOME WEIRD REASON, these actions are performed sequentially (maybe initially), and: within one step() it performes all 4 actions
-        # self._actions_dict = {
-        #     0: self.robot_main.move_to(self._target_position),
-        #     2: self.robot_main.close_gripper(),            
-        #     1: self.robot_main.move_to(self._destination_position),
-        #     3: self.robot_main.open_gripper()
-        # }
-        # DONT DO ABOVE, will literally call the functions line by line
-        # '''
+        '''
         
         # New Action Space
         # move to x y z that policy chose
         # self.robot_main.move_to(action["continuous"], yaw_rotation=-90) 
 
-        # gripper: positive or 0 is open, negative is close
-        # NOTE: maybe want to move gripper logically after movement (?)
-        if action[3] >= 0:
-            self.robot_main.open_gripper()
-            self.gripper_state = 1
-        elif action[3] < 0:
-            self.robot_main.close_gripper()
-            self.gripper_state = 0
+        
 
         # set robot velocity x y z using continuous action space that policy picked
         self.robot_main.action_velocity(x_velocity=self.get_actual(action[0], self.agent_x_vel_low, self.agent_x_vel_high), 
@@ -312,6 +280,15 @@ class xArmEnv(gym.Env):
         
         # to update observation for velocity x y z
         self._agent_position[11:14] = [action[0], action[1], action[2]] 
+
+        # gripper: positive or 0 is open, negative is close
+        # NOTE: maybe want to move gripper logically after movement (?)
+        if action[3] >= 0:
+            self.robot_main.open_gripper()
+            self.gripper_state = 1
+        elif action[3] < 0:
+            self.robot_main.close_gripper()
+            self.gripper_state = 0
             
             
         print("Action:")
@@ -364,12 +341,6 @@ class xArmEnv(gym.Env):
         elif(self.gripper_state == 1): # anytime the gripper is opened assume not going to be updating target position anymore
             self.state_grabbed_target = 0
             self.current_checkpoint = 0
-    
-        # # if agent at target and robot closed gripper, update target position with agent's position (robot is holding block)
-        # if(np.array_equal(self._agent_position[0:3], self._target_position) and self.gripper_state == 0):
-        #     self.state_grabbed_target = 1
-        # robot chose to open gripper while it was previously holding target
-        # elif(np.array_equal(self._agent_position[0:3], self._target_position) and self.state_last_action == 3):
          
         print("STATE CHECKPOINT: ", self.state_grabbed_target)
 
@@ -444,76 +415,6 @@ class xArmEnv(gym.Env):
         elif (self.current_checkpoint == 2 and 
               self.previous_checkpoint == self.current_checkpoint - 1):
             reward = 10
-        
-        ''' OLD REWARD SYSTEM
-        # Reward System (think of it as training a dog with treats / no treats / punish for doing something 
-        # -> ALSO making sure agent is not convinving itself to do something that is not ideal)
-        # PROBLEM: model sometimes get stuck repeating an action even with punishment but at some point broke out of it
-        # PROBLEM: with my current dense reward system, model convinced itself that within an episode it can rack up more reward from constantly going back and forth to target position then at the end finally choose to pick up the block and move to destination to maximize reward
-        if terminated:
-            reward = 100
-        #     # reward = 1
-            self.state_target_reached_destination = 1
-            print("Target reached Destination!!!!!!")
-        # # penalize for choosing the same action back to back
-        elif (action == 0 and self.state_last_action == 0) or (action == 1 and self.state_last_action == 1) or (action == 2 and self.state_last_action == 2) or (action == 3 and self.state_last_action == 3): 
-            reward = -3
-            # reward = 0
-
-        # elif info["distance_a_t"] < self.prev_agent_target_distance:
-        #     # if self.prev_agent_target_distance != 99999999:
-        #     #     # reward = np.abs(info["distance_a_t"] - self.prev_agent_target_distance)
-        #     #     reward = 1
-        #     # else: reward = 1
-        #     reward = 1
-        # elif info["distance_t_d"] < self.prev_target_dest_distance:
-        #     # if self.prev_target_dest_distance != 99999999:
-        #     #     reward = np.abs(info["distance_t_d"] - self.prev_target_dest_distance)
-        #     # else: reward = 1
-        #     reward = 1
-        
-        # provide reward for closing gripper at target position
-        elif np.array_equal(self._agent_position[0:3], self._target_position) and action == 2: 
-            reward = 1
-            
-        # punish for opening gripper at target position when it use to be closed
-        elif np.array_equal(self._agent_position[0:3], self._target_position) and action == 3 and self.state_last_action == 2: 
-            reward = -1
-        # maybe punish for going to target with grippers closed (would lead to collision which we dont want) -> this MAY lead to model thinking moving to target is bad
-        elif np.array_equal(self._agent_position[0:3], self._target_position) and action == 0 and self.gripper_state == 0:  
-            # reward = -0.1
-            # END EPISODE if agent moves to the target with its gripper closed 
-            terminated = True
-            reward = -30
-            self.state_collision = 1
-            # reward=0
-        # provide reward for moving to target
-        elif np.array_equal(self._agent_position[0:3], self._target_position) and action == 0:
-            reward = 0.1
-            # provide bonus reward for going to target with grippers open
-            if np.array_equal(self._agent_position[0:3], self._target_position) and action == 0 and self.gripper_state == 1: 
-                reward += 0.1
-
-            
-        
-        # # # provide reward for going to target with grippers open    
-        # elif np.array_equal(self._agent_position[0:3], self._target_position) and action == 0 and self.gripper_state == 1: 
-        #     reward = 1
-        
-            
-        # penalize for letting go of the block not at destination
-        # elif np.array_equal(self._agent_position[0:3], self._target_position) and action == 3:
-        #     reward = -1 
-        # penalize for going to destination without target (block)
-        elif action == 1 and not np.array_equal(self._agent_position[0:3], self._target_position):
-            reward = -1
-        else:
-            reward = 0
-        
-        # IMPORTANT EXPERIMENT: I would provide a reward of 1 if it was what i wanted and otherwise -1, this lead to the robot at 
-        # a new episode pick the ideal path sequentially: actions: 0,2,1
-        # reward = input("Provide a reward for this action: ")
-        '''
             
         print("Reward: ", reward)
         
@@ -522,10 +423,8 @@ class xArmEnv(gym.Env):
         
         self.state_last_action = action
         
-        
         self.update_historical_actions(action)
-          
-
+        
         print("New Historical Actions: ", self.historical_actions)
         
         observation = self._get_obs()
@@ -533,15 +432,11 @@ class xArmEnv(gym.Env):
 
         if self.render_mode == "human":
             self._render_frame()
+            
+        # Truncate if number of steps reaches specified episode length
+        truncated = self.num_steps > self.episode_length
 
-
-        # self._actions_dict = {
-        #     0: np.array([self._get_x_displacement(),0,0, 0,0,0, 0,0,0,0,0]), # x displacement
-        #     1: np.array([0,self._get_y_displacement(),0, 0,0,0, 0,0,0,0,0]), # y displacement
-        #     2: np.array([0,0,self._get_z_displacement(), 0,0,0, 0,0,0,0,0]), # z displacement
-        # }
-
-        return observation, reward, terminated, False, info # WHAT does the False represent (truncated)
+        return observation, reward, terminated, truncated, info
     
     
     # pybullet?
