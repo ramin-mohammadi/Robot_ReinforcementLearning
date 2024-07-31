@@ -30,7 +30,7 @@ class xArmEnv(gym.Env):
 
         mujoco.set_mjcb_control(None)
 
-        self.m = mujoco.MjModel.from_xml_path('/Users/albert/REU/2024/MuJoCo/model/xArm 5/scene.xml')
+        self.m = mujoco.MjModel.from_xml_path('PATH TO scene.xml')
         self.d = mujoco.MjData(self.m)
         self.viewer = mujoco.viewer.launch_passive(self.m, self.d, show_left_ui=False)
         # self.renderer = mujoco.Renderer(model=self.m, height=480, width=640)
