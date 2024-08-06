@@ -27,7 +27,7 @@ env = gymnasium.make('FactoryRobotArm/xArm-v0')
 
 obs, info = env.reset()
 
-m = mujoco.MjModel.from_xml_path('/Users/albert/REU/2024/MuJoCo/model/xArm 5/scene.xml')
+m = mujoco.MjModel.from_xml_path('PATHscene.xml')
 d = mujoco.MjData(m)
 
 RL_model = PPO("MultiInputPolicy", env, verbose=1)
