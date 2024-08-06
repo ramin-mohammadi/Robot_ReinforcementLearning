@@ -1,5 +1,5 @@
 <mujoco model="xarm7 scene">
-  <include file="xarm7.xml"/>
+  <include file="xarm7_new.xml"/>
 
   <statistic center="0.2 0 0.4" extent=".65"/>
 
