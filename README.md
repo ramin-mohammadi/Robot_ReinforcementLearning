@@ -22,6 +22,7 @@
 ## Object Detection
 
 ## Camera Calibration
+- Run camera_calibrations.py with the path to the set of images of whatever pattern you're using (checkerboard, circles, etc) and its size (ex: 9x6). Output will write the camera matrix, distortion coefficients, rotational vectors and translational vectors to a .npz file to be read whenever the information is needed.
 
 # Setup 
 
@@ -45,3 +46,5 @@
   - cd into the env_package folder
   - pip install -e .
 - in VSCode when running test_env.py, make sure IDE is using the python installed in your conda environment (look at bottom right of screen)
+- CONNECT to xArm's IP:
+  - https://docs.google.com/document/d/165G8HF38ADn8U5sJKdZGC6twOD5wrw_p3mPBK9e5eR0/edit?usp=sharing   
