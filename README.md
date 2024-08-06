@@ -21,7 +21,7 @@
 - ReinforcementLearning/different_env_packages/METHOD/env_package/FactoryRobotArm/ __init__.py
 - location where you specify the max number of steps that can be taken in an episode
 
-### Assemble Disassemble Demo
+### Assemble Disassemble Demo (SEQUENTIAL)
 - ReinforcementLearning/two_agent_demo_assemble_dissassemble
 - run main.py, specify n number of blocks being picked up and their locations
 - Utilizes the big xArm gripper and the small gripper robots
