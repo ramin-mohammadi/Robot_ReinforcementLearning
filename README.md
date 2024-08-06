@@ -32,6 +32,7 @@
 - vscode
 - python
 - anaconda
+- mujoco
 
 ### Steps
 - open anaconda prompt
