@@ -16,7 +16,7 @@
 - You will run this file to train the policy
 
 ### __init__.py
-- env_package\FactoryRobotArm\__init__.py
+- env_package\FactoryRobotArm\ __init__.py
 - location where you specify the max number of steps that can be taken in an episode
 
 ## Object Detection
@@ -24,6 +24,12 @@
 
 ## Camera Calibration
 - Run camera_calibrations.py with the path to the set of images of whatever pattern you're using (checkerboard, circles, etc) and its size (ex: 9x6). Output will write the camera matrix, distortion coefficients, rotational vectors and translational vectors to a .npz file to be read whenever the information is needed.
+
+## Camera Robot Coordination
+-  The PNP folder contains the attempts at solving the pixel to robot coordinate system using HOMOGRAPHY approach. pnp.py uses OpenCv's solvePnp() and pnp_manual.py involved manually creating the matrices in the homography equation
+-  The .xlsx file contains data collected to create Best Fit Lines for the x+ and y+ robot axes
+- robot_calibration_ERROR_checking.py was used to determine if error of the xArm's movement (ex: if a command to move 10mm in x+ actually moves 10mm in real world)
+- the pixel mapping points folder contains the demo of assembling blocks using the following method to obtain the block coordinates: creating multiple pixel segments along camera's x and y and mapping them to robot coordinates 
 
 # Setup 
 
