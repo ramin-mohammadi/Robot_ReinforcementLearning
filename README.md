@@ -9,7 +9,8 @@
 ### xArmClass.py
 - ReinforcementLearning/different_env_packages/METHOD/env_package/FactoryRobotArm/xArmClass.py
 - Code for the robot's class (boiler plate from a Blockly example) and contains functions that the environment in xArmEnv.py calls to perform actions with the robot (move to this position or open gripper, etc.)
-
+- Utilize the Blockly software and python conversion to get a boiler plate class structure and understanding of different commands. In addition look at the xArm SDK repo's API for functions to use outside of what's available in Blockly: https://github.com/xArm-Developer/xArm-Python-SDK
+   
 ### test_env.py / test_env_sim.py
 - ReinforcementLearning/different_env_packages/METHOD/env_package/test_env.py
 - This can be seen as the main.py where we actually call/create our gymnasium custom environment, pick a policy (PPO or DQN), train the policy with our environment, and then test the trained policy / Reinforcement Learning model
@@ -67,4 +68,7 @@
   - pip install -e .
 - in VSCode when running test_env.py, make sure IDE is using the python installed in your conda environment (look at bottom right of screen)
 - CONNECT to xArm's IP:
-  - https://docs.google.com/document/d/165G8HF38ADn8U5sJKdZGC6twOD5wrw_p3mPBK9e5eR0/edit?usp=sharing   
+  - https://docs.google.com/document/d/165G8HF38ADn8U5sJKdZGC6twOD5wrw_p3mPBK9e5eR0/edit?usp=sharing
+
+- xArm Manuals
+  - https://drive.google.com/drive/folders/1LeDknZFKG332gVclHP5J5epk2ptgiheE?usp=drive_link 
