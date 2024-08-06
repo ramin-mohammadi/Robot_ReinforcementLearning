@@ -4,7 +4,7 @@ import mujoco
 import mujoco.viewer
 import numpy as np
 
-m = mujoco.MjModel.from_xml_path('/Users/albert/REU/2024/MuJoCo/model/xArm 5/scene.xml')
+m = mujoco.MjModel.from_xml_path('PATH/scene.xml')
 d = mujoco.MjData(m)
 
 i = 0
