@@ -20,6 +20,7 @@
 - location where you specify the max number of steps that can be taken in an episode
 
 ## Object Detection
+- object_detection_calibration.py contains the openCV color recognition code, uses a resolution of 1920x1080 60fps, and uses the .npz from the camera calibration to remove the distortion.
 
 ## Camera Calibration
 - Run camera_calibrations.py with the path to the set of images of whatever pattern you're using (checkerboard, circles, etc) and its size (ex: 9x6). Output will write the camera matrix, distortion coefficients, rotational vectors and translational vectors to a .npz file to be read whenever the information is needed.
