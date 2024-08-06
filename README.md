@@ -20,6 +20,17 @@
 - ReinforcementLearning/different_env_packages/METHOD/env_package/FactoryRobotArm/ __init__.py
 - location where you specify the max number of steps that can be taken in an episode
 
+### Assemble Disassemble Demo
+- ReinforcementLearning/two_agent_demo_assemble_dissassemble
+- run main.py, specify n number of blocks being picked up and their locations
+- Utilizes the big xArm gripper and the small gripper robots
+
+### IMPORTANT: Various Env_Packages
+- ReinforcementLearning/different_env_packages contains various custom environments:
+  - 1) Perform Continous Actions (velocity x y z, and gripper) directly using physical real world xArm big gripper
+  - 2) Perform Continuous Actions in Mujoco Physics Engine
+  - 3) Perform Discrete Actions (move to target, move to destination, open/close gripper) directly using physical real world xArm big gripper
+
 ## Object Detection
 - object_detection_calibration.py contains the openCV color recognition code, uses a resolution of 1920x1080 60fps, and uses the .npz from the camera calibration to remove the distortion.
 
