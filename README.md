@@ -1,8 +1,10 @@
-## Main Files to Look At
+# Main Files to Look At
+
+## Reinforcement Learning using Gymnasium and xArm API
 
 ### xArmEnv.py
 - env_package\FactoryRobotArm\envs\xArmEnv.py
-- Code for the gymnaisum custom environment containing functions such as step(). __init__(), reset(), and initialzing the connection to the robot arm
+- Code for the gymnaisum custom environment containing functions such as step(), __init__(), reset(), and initialzing the connection to the robot arm
 
 ### xArmClass.py
 - env_package\FactoryRobotArm\xArmClass.py
@@ -17,7 +19,11 @@
 - env_package\FactoryRobotArm\__init__.py
 - location where you specify the max number of steps that can be taken in an episode
 
-## Setup 
+## Object Detection
+
+## Camera Calibration
+
+# Setup 
 
 ### Download
 - git
@@ -36,6 +42,6 @@
 - Clone this repo to get the custom gymnasium environment code: git clone https://github.com/RockLee117/Robot_ReinforcementLearning.git
 - then move the downloaded env_package folder into the xArm-Python-SDK folder
 - (YOU WILL HAVE TO REPEAT THIS STEP ANYTIME YOU MAKE CHANGES TO CODE IN THE CUSTOM ENVIRONMENT) In the anaconda prompt with same env activated, download the custom gymnasium env and its required dependencies:
-- cd into the env_package folder
-- pip install -e .
+  - cd into the env_package folder
+  - pip install -e .
 - in VSCode when running test_env.py, make sure IDE is using the python installed in your conda environment (look at bottom right of screen)
