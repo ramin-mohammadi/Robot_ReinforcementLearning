@@ -3,6 +3,8 @@ Repository for custom gymnasium RL environment of Ufactory robot arms implemente
 
 <a href="https://m.youtube.com/watch?v=APgdIL5kN3g">Demo</a>
 
+<a href="https://docs.google.com/document/d/1BJyF7-UAT0koPEH6pno_Spr9OSLHFxNMQBPoCNYdw-I/edit?usp=sharing">Final Report</a>
+
 [![IMAGE ALT TEXT HERE](https://github.com/ramin-mohammadi/Robot_ReinforcementLearning/blob/main/img/setup.jpg)](https://m.youtube.com/watch?v=APgdIL5kN3g)
 ![IMAGE ALT TEXT HERE](https://github.com/ramin-mohammadi/Robot_ReinforcementLearning/blob/main/img/object_detect.jpg)
 
