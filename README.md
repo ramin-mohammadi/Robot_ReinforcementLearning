@@ -1,3 +1,6 @@
+# Ufactory xArm Reinforcement Learning
+Repository for custom gymnasium RL environment of Ufactory robot arms implemented with OpenCV color object detection, MuJoCo physics engine simulation, and several methods for pixel-coordinate to robot-coordinate system mapping.    
+
 # Main Files to Look At
 
 ## Reinforcement Learning using Gymnasium and xArm API
